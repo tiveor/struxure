@@ -1,0 +1,217 @@
+@import "tailwindcss";
+
+/* ── Custom theme tokens ─────────────────────────────────────── */
+@theme {
+  --color-surface-0: #0f172a;
+  --color-surface-1: #1e293b;
+  --color-surface-2: #334155;
+  --color-surface-3: #475569;
+  --color-canvas: #020617;
+  --color-border: #1e293b;
+  --color-border-subtle: rgba(148, 163, 184, 0.08);
+  --color-accent: #3b82f6;
+  --color-accent-hover: #2563eb;
+  --color-accent-success: #10b981;
+  --color-accent-error: #ef4444;
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+}
+
+/* ── Base reset (inside @layer so Tailwind utilities can override) ── */
+@layer base {
+  :root {
+    font-family: "Inter", system-ui, -apple-system, sans-serif;
+    line-height: 1.5;
+    font-weight: 400;
+    color: #e2e8f0;
+    background-color: var(--color-surface-0);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    --focus-ring: rgba(59, 130, 246, 0.4);
+  }
+
+  /* ── Theme: Forest (cyan/teal) ──────────────────────────────── */
+  [data-theme="forest"] {
+    --color-surface-0: #0c1a1a;
+    --color-surface-1: #1a2e2e;
+    --color-surface-2: #2d4444;
+    --color-surface-3: #3f5b5b;
+    --color-canvas: #040e0e;
+    --color-border: #1a2e2e;
+    --color-accent: #06b6d4;
+    --color-accent-hover: #0891b2;
+    --color-slate-600: #4a7272;
+    --color-slate-700: #2d4e4e;
+    --color-slate-800: #1a3333;
+    --color-slate-900: #0f2020;
+    --focus-ring: rgba(6, 182, 212, 0.4);
+  }
+
+  /* ── Theme: Ember (amber/warm) ──────────────────────────────── */
+  [data-theme="ember"] {
+    --color-surface-0: #1a1510;
+    --color-surface-1: #2b241c;
+    --color-surface-2: #44382a;
+    --color-surface-3: #5c4e3a;
+    --color-canvas: #0a0804;
+    --color-border: #2b241c;
+    --color-accent: #f59e0b;
+    --color-accent-hover: #d97706;
+    --color-slate-600: #72664a;
+    --color-slate-700: #4e432d;
+    --color-slate-800: #33291a;
+    --color-slate-900: #201a0f;
+    --focus-ring: rgba(245, 158, 11, 0.4);
+  }
+
+  /* ── Theme: Orchid (purple) ─────────────────────────────────── */
+  [data-theme="orchid"] {
+    --color-surface-0: #150f2a;
+    --color-surface-1: #231c3b;
+    --color-surface-2: #363055;
+    --color-surface-3: #4a4369;
+    --color-canvas: #080417;
+    --color-border: #231c3b;
+    --color-accent: #a855f7;
+    --color-accent-hover: #9333ea;
+    --color-slate-600: #5e4a72;
+    --color-slate-700: #3d2d4e;
+    --color-slate-800: #271a33;
+    --color-slate-900: #180f20;
+    --focus-ring: rgba(168, 85, 247, 0.4);
+  }
+
+  /* ── Theme: Daylight (clean white + blue) ───────────────────── */
+  [data-theme="daylight"] {
+    color: #1e293b;
+    --color-surface-0: #f8fafc;
+    --color-surface-1: #f1f5f9;
+    --color-surface-2: #e2e8f0;
+    --color-surface-3: #cbd5e1;
+    --color-canvas: #ffffff;
+    --color-border: #e2e8f0;
+    --color-border-subtle: rgba(100, 116, 139, 0.1);
+    --color-accent: #2563eb;
+    --color-accent-hover: #1d4ed8;
+    --color-accent-success: #059669;
+    --color-accent-error: #dc2626;
+    --color-slate-100: #1e293b;
+    --color-slate-200: #334155;
+    --color-slate-300: #475569;
+    --color-slate-400: #64748b;
+    --color-slate-500: #94a3b8;
+    --color-slate-600: #cbd5e1;
+    --color-slate-700: #e2e8f0;
+    --color-slate-800: #e2e8f0;
+    --color-slate-900: #f1f5f9;
+    --focus-ring: rgba(37, 99, 235, 0.3);
+  }
+
+  /* ── Theme: Snow (warm white + emerald) ─────────────────────── */
+  [data-theme="snow"] {
+    color: #1c1917;
+    --color-surface-0: #fafaf9;
+    --color-surface-1: #f5f5f4;
+    --color-surface-2: #e7e5e4;
+    --color-surface-3: #d6d3d1;
+    --color-canvas: #fefefe;
+    --color-border: #e7e5e4;
+    --color-border-subtle: rgba(120, 113, 108, 0.1);
+    --color-accent: #059669;
+    --color-accent-hover: #047857;
+    --color-accent-success: #16a34a;
+    --color-accent-error: #dc2626;
+    --color-slate-100: #1c1917;
+    --color-slate-200: #292524;
+    --color-slate-300: #44403c;
+    --color-slate-400: #78716c;
+    --color-slate-500: #a8a29e;
+    --color-slate-600: #d6d3d1;
+    --color-slate-700: #e7e5e4;
+    --color-slate-800: #e7e5e4;
+    --color-slate-900: #f5f5f4;
+    --focus-ring: rgba(5, 150, 105, 0.3);
+  }
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html, body, #root {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  /* ── Custom scrollbar ──────────────────────────────────────── */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-surface-3);
+    border-radius: 10px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-slate-600, #64748b);
+  }
+
+  /* ── Focus ring utility ────────────────────────────────────── */
+  input:focus,
+  select:focus,
+  textarea:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--focus-ring);
+    border-color: var(--color-accent);
+  }
+
+  button:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--focus-ring);
+  }
+
+  /* ── Select dropdown fix ───────────────────────────────────── */
+  select option {
+    background-color: var(--color-surface-1);
+    color: inherit;
+  }
+
+  /* ── Number input spinner (cleaner look) ───────────────────── */
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    opacity: 0.3;
+  }
+
+  input[type="number"]:hover::-webkit-inner-spin-button,
+  input[type="number"]:hover::-webkit-outer-spin-button {
+    opacity: 0.7;
+  }
+}
+
+/* ── Utility classes (inside @layer so they work with Tailwind) ── */
+@layer components {
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .canvas-grid {
+    background-image: radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  .node-list-item:hover .node-actions {
+    opacity: 1;
+  }
+}

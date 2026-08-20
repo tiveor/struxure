@@ -1,0 +1,35 @@
+Struxure
+Copyright 2026 Alvaro Orellana
+
+This product includes software developed by Alvaro Orellana.
+
+Licensed under the Apache License, Version 2.0. See the LICENSE file.
+
+--------------------------------------------------------------------------------
+Engineering standards
+
+Struxure implements design verification procedures described in the following
+standards. It reproduces none of their text.
+
+  AISC 360, Specification for Structural Steel Buildings
+  American Institute of Steel Construction
+
+  ACI 318, Building Code Requirements for Structural Concrete
+  American Concrete Institute
+
+Struxure is not affiliated with, endorsed by, sponsored by, or approved by the
+American Institute of Steel Construction or the American Concrete Institute.
+Neither organisation has reviewed, verified, or certified this software or its
+results. AISC and ACI, and the titles of their publications, are the property of
+their respective owners.
+
+Section property values are physical properties of standard rolled shapes.
+Users requiring authoritative values must consult the current edition of the
+governing standard.
+
+--------------------------------------------------------------------------------
+No warranty
+
+Struxure is provided for education and preliminary design only. Its results are
+not a substitute for review by a licensed professional engineer. See Sections 7
+and 8 of the LICENSE file.

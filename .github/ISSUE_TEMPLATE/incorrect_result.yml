@@ -1,0 +1,55 @@
+name: Incorrect analysis result
+description: A displacement, force, reaction or design check looks wrong
+labels: [bug, analysis]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Struxure is for education and preliminary design. Before reporting,
+        please confirm the difference is not explained by a documented
+        limitation — see the Limitations section of the README.
+
+  - type: textarea
+    id: model
+    attributes:
+      label: Model file
+      description: >
+        Click Save in the toolbar and paste the exported JSON here, or attach it.
+        Without the model this issue cannot be reproduced and will be closed.
+      render: json
+    validations:
+      required: true
+
+  - type: input
+    id: quantity
+    attributes:
+      label: Which quantity is wrong
+      placeholder: Mid-span moment M3 of element E4
+    validations:
+      required: true
+
+  - type: input
+    id: reported
+    attributes:
+      label: Value Struxure reports
+      placeholder: 142.6 kip-in
+    validations:
+      required: true
+
+  - type: input
+    id: expected
+    attributes:
+      label: Value you expected
+      placeholder: 150.0 kip-in
+    validations:
+      required: true
+
+  - type: textarea
+    id: source
+    attributes:
+      label: Where the expected value comes from
+      description: >
+        A closed-form formula, a textbook example cited by edition and number, or
+        a hand calculation shown in full. Please include the working.
+    validations:
+      required: true

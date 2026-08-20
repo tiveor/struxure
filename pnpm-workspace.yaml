@@ -1,0 +1,6 @@
+# Packages with postinstall/build scripts must be allow-listed here (pnpm 11+),
+# otherwise `pnpm install` fails with ERR_PNPM_IGNORED_BUILDS.
+# Run `pnpm approve-builds` to review and add new ones.
+allowBuilds:
+  core-js: true  # transitive dep of jspdf via canvg; postinstall is a funding-message no-op
+  esbuild: true  # transitive dep of vite; postinstall downloads the platform native binary
