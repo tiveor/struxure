@@ -46,7 +46,7 @@
     "idb": "^8.0.3",
     "jspdf": "^4.1.0",
     "jspdf-autotable": "^5.0.7",
-    "ml-matrix": "^6.12.1",
+    "ml-matrix": "^6.15.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "three": "^0.185.1",
