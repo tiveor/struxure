@@ -1,11 +1,7 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Grid, GizmoHelper, GizmoViewport } from '@react-three/drei';
-import { NodeMesh } from '../viewport/NodeMesh';
-import { ElementMesh } from '../viewport/ElementMesh';
-import { SupportMesh } from '../viewport/SupportMesh';
-import { LoadArrows } from '../viewport/LoadArrows';
-import { DeformedShape } from '../viewport/DeformedShape';
+import { SceneContent } from '../viewport/SceneContent';
 import { useModelStore } from '../../store/model-store';
 import { useUIStore, CANVAS_THEMES } from '../../store/ui-store';
 import { useResultsStore } from '../../store/results-store';
@@ -23,6 +19,7 @@ export function MobileViewer() {
   const modelName = useUIStore((s) => s.modelName);
   const canvasTheme = useUIStore((s) => s.canvasTheme);
   const canvasColors = CANVAS_THEMES[canvasTheme];
+  const setRenderMode = useUIStore((s) => s.setRenderMode);
   const isAnalyzed = useResultsStore((s) => s.isAnalyzed);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -83,6 +80,10 @@ export function MobileViewer() {
     window.addEventListener('zoom-extents', handler);
     return () => window.removeEventListener('zoom-extents', handler);
   }, [handleZoomExtents]);
+
+  useEffect(() => {
+    setRenderMode(showSections ? 'sections' : 'wireframe');
+  }, [showSections, setRenderMode]);
 
   const handleNextTemplate = async () => {
     const next = (currentTemplate + 1) % featuredTemplates.length;
@@ -168,7 +169,7 @@ export function MobileViewer() {
             fadeStrength={1}
           />
 
-          <MobileScene viewMode={viewMode} showSections={showSections} />
+          <SceneContent viewMode={viewMode} showForceDiagrams={false} />
 
           <OrbitControls
             ref={controlsRef}
@@ -277,38 +278,6 @@ export function MobileViewer() {
       {/* About dialog */}
       {showAbout && <AboutDialog variant="mobile" onClose={() => setShowAbout(false)} />}
     </div>
-  );
-}
-
-function MobileScene({ viewMode, showSections }: { viewMode: string; showSections: boolean }) {
-  const nodes = useModelStore((s) => s.nodes);
-  const elements = useModelStore((s) => s.elements);
-  const supports = useModelStore((s) => s.supports);
-  const nodalLoads = useModelStore((s) => s.nodalLoads);
-  const setRenderMode = useUIStore((s) => s.setRenderMode);
-
-  useEffect(() => {
-    setRenderMode(showSections ? 'sections' : 'wireframe');
-  }, [showSections, setRenderMode]);
-
-  const showDeformed = viewMode === 'deformed';
-
-  return (
-    <>
-      {nodes.map((node) => (
-        <NodeMesh key={node.id} node={node} />
-      ))}
-      {elements.map((element) => (
-        <ElementMesh key={element.id} element={element} viewMode={viewMode} />
-      ))}
-      {supports.map((support) => (
-        <SupportMesh key={support.nodeId} support={support} />
-      ))}
-      {nodalLoads.map((load) => (
-        <LoadArrows key={load.id} load={load} />
-      ))}
-      {showDeformed && <DeformedShape viewMode={viewMode} />}
-    </>
   );
 }
 
