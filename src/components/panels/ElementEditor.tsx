@@ -134,6 +134,7 @@ function ElementForm() {
 
 export function ElementEditor() {
   const elements = useModelStore((s) => s.elements);
+  const materials = useModelStore((s) => s.materials);
   const removeElement = useModelStore((s) => s.removeElement);
   const selectElement = useUIStore((s) => s.selectElement);
   const selectedElementId = useUIStore((s) => s.selectedElementId);
@@ -170,7 +171,9 @@ export function ElementEditor() {
                   >
                     <td className="px-4 py-2 text-accent font-bold">{elem.id}</td>
                     <td className="px-4 py-2 text-slate-400">{elem.nodeI} → {elem.nodeJ}</td>
-                    <td className="px-4 py-2 text-slate-500 text-xs font-sans">{elem.materialId}</td>
+                    <td className="px-4 py-2 text-slate-500 text-xs font-sans">
+                      {materials.find((m) => m.id === elem.materialId)?.name ?? elem.materialId}
+                    </td>
                     <td className="px-4 py-2">
                       <span
                         className="material-icons-round text-sm opacity-0 group-hover:opacity-100 cursor-pointer text-slate-400 hover:text-red-400"

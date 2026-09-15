@@ -10,6 +10,49 @@ import type { StructuralModel, AnalysisResults } from '../core/types';
 // we build the IFC-SPF text directly — this is the most reliable approach
 // for generating valid, readable IFC files.
 
+/**
+ * Encodes a value for a STEP (ISO 10303-21) string literal.
+ *
+ * `'` doubles to `''` and `\` doubles to `\\`; characters outside printable
+ * ASCII are hex-escaped the way IFC readers expect: `\X\HH` for the Latin-1
+ * upper half, a `\X2\HHHH…\X0\` block for the rest of the BMP, and `\X4\` for
+ * supplementary planes.
+ *
+ * Section names are free-form text — typed into SectionEditor or copied
+ * verbatim from imported IFC profile names — so a name like `Owner's W12`
+ * would otherwise close the string early and produce an unparseable file.
+ * Applied to every model-derived string written into the file.
+ */
+export function escapeStep(value: string): string {
+  let out = '';
+  for (let i = 0; i < value.length; i++) {
+    const code = value.codePointAt(i)!;
+    if (code > 0xffff) i++; // astral chars occupy a surrogate pair
+
+    if (code === 0x27) {
+      out += "''"; // '
+    } else if (code === 0x5c) {
+      out += '\\\\'; // \
+    } else if (code >= 0x20 && code <= 0x7e) {
+      out += String.fromCodePoint(code);
+    } else if (code <= 0xff) {
+      out += `\\X\\${code.toString(16).toUpperCase().padStart(2, '0')}`;
+    } else {
+      // Group a run of same-plane characters into one \X2\ / \X4\ block.
+      const width = code > 0xffff ? 8 : 4;
+      let run = code.toString(16).toUpperCase().padStart(width, '0');
+      while (i + 1 < value.length) {
+        const next = value.codePointAt(i + 1)!;
+        if (next <= 0xff || (next > 0xffff) !== (width === 8)) break;
+        run += next.toString(16).toUpperCase().padStart(width, '0');
+        i += next > 0xffff ? 2 : 1;
+      }
+      out += `\\X${width === 8 ? '4' : '2'}\\${run}\\X0\\`;
+    }
+  }
+  return out;
+}
+
 export async function exportResultsToIfc(
   model: StructuralModel,
   results: AnalysisResults | null,
@@ -110,7 +153,7 @@ export async function exportResultsToIfc(
     lines.push(`#${localPlacementId}=IFCLOCALPLACEMENT($,#${placementId});`);
 
     const connectionId = id();
-    lines.push(`#${connectionId}=IFCSTRUCTURALPOINTCONNECTION('${generateGuid()}',#${ownerHistoryId},'${node.id}','Node ${node.id}',$,#${localPlacementId},$,$);`);
+    lines.push(`#${connectionId}=IFCSTRUCTURALPOINTCONNECTION('${generateGuid()}',#${ownerHistoryId},'${escapeStep(node.id)}','${escapeStep(`Node ${node.id}`)}',$,#${localPlacementId},$,$);`);
 
     nodeIdMap.set(node.id, connectionId);
 
@@ -124,13 +167,13 @@ export async function exportResultsToIfc(
       const rx = support.rx ? 0.0 : -1.0;
       const ry = support.ry ? 0.0 : -1.0;
       const rz = support.rz ? 0.0 : -1.0;
-      lines.push(`#${bcId}=IFCBOUNDARYNODECONDITION('Support ${node.id}',${dx === 0 ? '0.' : '$'},${dy === 0 ? '0.' : '$'},${dz === 0 ? '0.' : '$'},${rx === 0 ? '0.' : '$'},${ry === 0 ? '0.' : '$'},${rz === 0 ? '0.' : '$'});`);
+      lines.push(`#${bcId}=IFCBOUNDARYNODECONDITION('${escapeStep(`Support ${node.id}`)}',${dx === 0 ? '0.' : '$'},${dy === 0 ? '0.' : '$'},${dz === 0 ? '0.' : '$'},${rx === 0 ? '0.' : '$'},${ry === 0 ? '0.' : '$'},${rz === 0 ? '0.' : '$'});`);
 
       // Update connection with boundary condition
       // Re-write the connection line with the boundary condition
       const idx = lines.findIndex((l) => l.startsWith(`#${connectionId}=`));
       if (idx >= 0) {
-        lines[idx] = `#${connectionId}=IFCSTRUCTURALPOINTCONNECTION('${generateGuid()}',#${ownerHistoryId},'${node.id}','Node ${node.id} (supported)',$,#${localPlacementId},$,#${bcId});`;
+        lines[idx] = `#${connectionId}=IFCSTRUCTURALPOINTCONNECTION('${generateGuid()}',#${ownerHistoryId},'${escapeStep(node.id)}','${escapeStep(`Node ${node.id} (supported)`)}',$,#${localPlacementId},$,#${bcId});`;
       }
     }
   }
@@ -163,7 +206,8 @@ export async function exportResultsToIfc(
     lines.push(`#${placementId}=IFCLOCALPLACEMENT($,#${axisPlacementId});`);
 
     const memberId = id();
-    lines.push(`#${memberId}=IFCSTRUCTURALCURVEMEMBER('${generateGuid()}',#${ownerHistoryId},'${elem.id}','Element ${elem.id} (${elem.sectionId})',$,#${placementId},#${prodDefShapeId},.RIGID_JOINED_MEMBER.,$);`);
+    const sectionName = model.sections.find((s) => s.id === elem.sectionId)?.name ?? elem.sectionId;
+    lines.push(`#${memberId}=IFCSTRUCTURALCURVEMEMBER('${generateGuid()}',#${ownerHistoryId},'${escapeStep(elem.id)}','${escapeStep(`Element ${elem.id} (${sectionName})`)}',$,#${placementId},#${prodDefShapeId},.RIGID_JOINED_MEMBER.,$);`);
     memberIds.push(memberId);
 
     // Connect member to nodes
@@ -202,10 +246,10 @@ export async function exportResultsToIfc(
       const fN = reaction.map((v) => v * 4448.22);
 
       const loadId = id();
-      lines.push(`#${loadId}=IFCSTRUCTURALLOADSINGLEFORCE('Reaction ${nodeId}',${fN[0].toFixed(2)},${fN[1].toFixed(2)},${fN[2].toFixed(2)},${fN[3].toFixed(2)},${fN[4].toFixed(2)},${fN[5].toFixed(2)});`);
+      lines.push(`#${loadId}=IFCSTRUCTURALLOADSINGLEFORCE('${escapeStep(`Reaction ${nodeId}`)}',${fN[0].toFixed(2)},${fN[1].toFixed(2)},${fN[2].toFixed(2)},${fN[3].toFixed(2)},${fN[4].toFixed(2)},${fN[5].toFixed(2)});`);
 
       const reactionId = id();
-      lines.push(`#${reactionId}=IFCSTRUCTURALPOINTREACTION('${generateGuid()}',#${ownerHistoryId},'Reaction ${nodeId}',$,$,$,$,#${loadId},.GLOBAL_COORDS.,$);`);
+      lines.push(`#${reactionId}=IFCSTRUCTURALPOINTREACTION('${generateGuid()}',#${ownerHistoryId},'${escapeStep(`Reaction ${nodeId}`)}',$,$,$,$,#${loadId},.GLOBAL_COORDS.,$);`);
 
       // Link to connection
       const relActId = id();

@@ -303,7 +303,12 @@ function addElementTable(doc: jsPDF, model: StructuralModel, margin: number, y: 
     margin: { left: margin, right: margin },
     head: [['Element ID', 'Node I', 'Node J', 'Material', 'Section', 'Beta (°)']],
     body: model.elements.map((e) => [
-      e.id, e.nodeI, e.nodeJ, e.materialId, e.sectionId, e.betaAngle.toFixed(0),
+      e.id,
+      e.nodeI,
+      e.nodeJ,
+      model.materials.find((m) => m.id === e.materialId)?.name ?? e.materialId,
+      model.sections.find((s) => s.id === e.sectionId)?.name ?? e.sectionId,
+      e.betaAngle.toFixed(0),
     ]),
     styles: { fontSize: 8, cellPadding: 2 },
     headStyles: { fillColor: [59, 130, 246], textColor: [255, 255, 255], fontStyle: 'bold' },
@@ -315,9 +320,9 @@ function addMaterialTable(doc: jsPDF, model: StructuralModel, margin: number, y:
   autoTable(doc, {
     startY: y,
     margin: { left: margin, right: margin },
-    head: [['Material ID', 'Name', 'Type', 'E (ksi)', 'G (ksi)', 'fy/fc (ksi)']],
+    head: [['Name', 'Type', 'E (ksi)', 'G (ksi)', 'fy/fc (ksi)']],
     body: model.materials.map((m) => [
-      m.id, m.name, m.type, m.E.toFixed(0), m.G.toFixed(0),
+      m.name, m.type, m.E.toFixed(0), m.G.toFixed(0),
       m.type === 'steel' ? (m.fy?.toFixed(1) ?? '-') : (m.fc?.toFixed(1) ?? '-'),
     ]),
     styles: { fontSize: 8, cellPadding: 2 },

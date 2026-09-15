@@ -19,7 +19,7 @@ import {
   strVal,
   numVal,
 } from '../ifc-import';
-import { exportResultsToIfc } from '../ifc-export';
+import { escapeStep, exportResultsToIfc } from '../ifc-export';
 import type { StructuralModel, AnalysisResults } from '../../core/types';
 
 // ─── Helpers ─────────────────────────────────────────────────────────
@@ -409,6 +409,71 @@ describe('exportResultsToIfc', () => {
     // 3 elements * 2 connections each = 6
     const matches = text.match(/IFCRELCONNECTSSTRUCTURALMEMBER/g);
     expect(matches?.length).toBe(6);
+  });
+
+  it('should escape quotes in section names so the file still parses', async () => {
+    const model = createTestModel();
+    model.sections[0].name = "Owner's W12";
+    const buffer = await exportResultsToIfc(model, null);
+    const text = new TextDecoder().decode(buffer);
+
+    expect(text).toContain("(Owner''s W12)");
+    // A raw ' would close the string early: every line must keep an even
+    // quote count for its string literals to stay balanced.
+    for (const line of text.split('\n')) {
+      expect((line.match(/'/g) ?? []).length % 2).toBe(0);
+    }
+  });
+
+  it('should encode non-ASCII section names with \\X2\\ escapes', async () => {
+    const model = createTestModel();
+    model.sections[0].name = 'Viga Ø200';
+    const buffer = await exportResultsToIfc(model, null);
+    const text = new TextDecoder().decode(buffer);
+    // Ø = U+00D8 → \X\D8 (Latin-1 single-octet escape)
+    expect(text).toContain('(Viga \\X\\D8200)');
+  });
+});
+
+// ─── STEP string encoding tests ──────────────────────────────────────
+
+describe('escapeStep', () => {
+  it('should pass printable ASCII through unchanged', () => {
+    expect(escapeStep('W12x26')).toBe('W12x26');
+    expect(escapeStep('A992 Steel (50 ksi)')).toBe('A992 Steel (50 ksi)');
+  });
+
+  it('should double single quotes', () => {
+    expect(escapeStep("Owner's W12")).toBe("Owner''s W12");
+    expect(escapeStep("''")).toBe("''''");
+  });
+
+  it('should double backslashes', () => {
+    expect(escapeStep('a\\b')).toBe('a\\\\b');
+    // A literal \X2\ typed by a user must not decode on import
+    expect(escapeStep('x\\X2\\0041\\X0\\')).toBe('x\\\\X2\\\\0041\\\\X0\\\\');
+  });
+
+  it('should encode Latin-1 characters as \\X\\ escapes', () => {
+    // é = U+00E9
+    expect(escapeStep('Höhe é')).toBe('H\\X\\F6he \\X\\E9');
+  });
+
+  it('should group BMP characters into one \\X2\\ block', () => {
+    // 日 = U+65E5, 本 = U+672C, 語 = U+8A9E
+    expect(escapeStep('日本語')).toBe('\\X2\\65E5672C8A9E\\X0\\');
+    expect(escapeStep('a日本b')).toBe('a\\X2\\65E5672C\\X0\\b');
+  });
+
+  it('should encode supplementary characters in an \\X4\\ block', () => {
+    // 😀 = U+1F600
+    expect(escapeStep('😀')).toBe('\\X4\\0001F600\\X0\\');
+  });
+
+  it('should keep the emitted file pure ASCII', () => {
+    for (const s of ["Owner's W12", 'Höhe', '日本語', '😀', 'a\\b']) {
+      expect(escapeStep(s)).toMatch(/^[\x20-\x7e]*$/);
+    }
   });
 });
 

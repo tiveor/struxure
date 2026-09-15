@@ -23,9 +23,16 @@ export function SectionEditor() {
   const [J, setJ] = useState(5);
 
   const handleAdd = () => {
-    if (!name) return;
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    // Sections render by name in the element table and in exports, so two
+    // entries sharing a name would be indistinguishable.
+    if (sections.some((s) => s.name === trimmed)) {
+      alert(`"${trimmed}" is already in your model`);
+      return;
+    }
     const id = newId('sec');
-    addSection({ id, name, A, Ix, Iy, J });
+    addSection({ id, name: trimmed, A, Ix, Iy, J });
     setName('');
   };
 

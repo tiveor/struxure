@@ -41,11 +41,19 @@ export function MaterialEditor() {
   };
 
   const handleAddCustom = () => {
-    if (!name) return;
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    // Same duplicate-name guard as the library path: materials render by
+    // name in the element table, so two entries sharing a name would be
+    // indistinguishable.
+    if (materials.some((m) => m.name === trimmed)) {
+      alert(`"${trimmed}" is already in your model`);
+      return;
+    }
     const id = newId('mat');
     const mat = type === 'steel'
-      ? { id, name, type: 'steel' as const, E, G, density: 0.000284, fy, fu: fy * 1.3 }
-      : { id, name, type: 'concrete' as const, E, G, density: 0.0000868, fc };
+      ? { id, name: trimmed, type: 'steel' as const, E, G, density: 0.000284, fy, fu: fy * 1.3 }
+      : { id, name: trimmed, type: 'concrete' as const, E, G, density: 0.0000868, fc };
     addMaterial(mat);
     setName('');
   };
