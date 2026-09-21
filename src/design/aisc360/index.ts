@@ -24,13 +24,13 @@ export function designSteelElement(
   L: number
 ): SteelDesignResult {
   // Tension check
-  const tensionRatio = checkTension(axialForce, material, section);
+  const { ratio: tensionRatio } = checkTension(axialForce, material, section);
 
   // Compression check
-  const compressionRatio = checkCompression(-axialForce, material, section, L, L);
+  const { ratio: compressionRatio } = checkCompression(-axialForce, material, section, L, L);
 
   // Flexure check
-  const flexureRatio = checkFlexure(momentZ, material, section, L);
+  const { ratio: flexureRatio } = checkFlexure(momentZ, material, section, L);
 
   // Axial ratio for combined check (governing of tension or compression)
   const axialRatio = Math.max(tensionRatio, compressionRatio);

@@ -6,14 +6,18 @@ import type { Material, Section } from '../../core/types';
  * Whitney stress block method.
  * φ = 0.90 for tension-controlled sections
  *
- * Returns: { ratio, AsRequired }
+ * Returns: { ratio, AsRequired, phiMn }
+ *
+ * phiMn is the capacity the required steel develops. A section that cannot
+ * develop the moment at all reports phiMn = 0, since the As behind it is a
+ * placeholder rather than a design.
  */
 export function checkFlexure(
   Mu: number,         // Required moment (kip-in, absolute)
   material: Material,
   section: Section
-): { ratio: number; AsRequired: number } {
-  if (Math.abs(Mu) < 1e-10) return { ratio: 0, AsRequired: 0 };
+): { ratio: number; AsRequired: number; phiMn: number } {
+  if (Math.abs(Mu) < 1e-10) return { ratio: 0, AsRequired: 0, phiMn: 0 };
 
   const fc = (material.fc || 4); // ksi
   const fy = 60; // Grade 60 rebar (ksi)
@@ -31,7 +35,8 @@ export function checkFlexure(
   const discriminant = 1 - (2 * Rn) / (0.85 * fc);
 
   let AsRequired: number;
-  if (discriminant < 0) {
+  const sectionTooSmall = discriminant < 0;
+  if (sectionTooSmall) {
     // Section is too small — needs compression steel or larger section
     AsRequired = 999;
   } else {
@@ -53,5 +58,5 @@ export function checkFlexure(
 
   const ratio = Math.abs(Mu) / Math.max(phiMn, 1e-10);
 
-  return { ratio: Math.min(ratio, 10), AsRequired };
+  return { ratio: Math.min(ratio, 10), AsRequired, phiMn: sectionTooSmall ? 0 : phiMn };
 }

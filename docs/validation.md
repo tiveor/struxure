@@ -22,6 +22,10 @@ and [`src/core/__tests__/`](../src/core/__tests__/). Run them with `pnpm test`.
 
 ## Design checks
 
+Every check returns the capacity it used alongside the D/C ratio, so the
+references below are asserted against that capacity directly rather than
+inferred by feeding in a demand and reading the ratio back.
+
 | Check | Reference | Status |
 |---|---|---|
 | AISC 360 Ch. D — tension yielding | AISC Manual (15th ed.) Table 5-1: W12x26, Fy 50 → φPn = 344 kips | Validated |
@@ -31,7 +35,8 @@ and [`src/core/__tests__/`](../src/core/__tests__/). Run them with `pnpm test`.
 | AISC 360 Ch. H — P-M interaction | Eq. H1-1a / H1-1b, including the Pr/Pc = 0.2 switch | Validated |
 | ACI 318 — beam flexure | ACI 318-19 §22.2 Whitney block and §9.6.1.2 minimum steel, worked by hand for a 12x24 with f'c = 4 ksi | Validated |
 | ACI 318 — beam shear | ACI 318-19 Eq. 22.5.5.1 (Vc) and §22.5.1.2 (Vs limit) | Validated |
-| ACI 318 — columns | — | Self-consistent only — see the caveat below |
+| ACI 318 — columns, pure axial φPn,max | ACI 318-19 22.4.2.2 (Po) with the 0.80 tied cap of 22.4.2.1, worked by hand for a 16x16 at 1% steel → 528 kips | Validated |
+| ACI 318 — columns, P-M interaction | — | Self-consistent only — see the caveat below |
 
 ### Caveat on ACI 318 columns
 
@@ -39,6 +44,11 @@ and [`src/core/__tests__/`](../src/core/__tests__/). Run them with `pnpm test`.
 reinforcement ratio** rather than analysing the section's actual bars, and
 approximates the balanced point. It is a screening tool, not a column design.
 Treat its ratio as indicative and verify any column that matters by other means.
+
+The pure axial anchor it reports, `phiPn0`, is a plain ACI equation and is
+pinned against a hand calculation. The balanced point and the pure moment
+anchor `phiMn0` are approximations, and nothing between the anchors is
+validated.
 
 ## Analysis engine
 
@@ -69,6 +79,11 @@ the capacity carries the error, so a ratio built from an independent demand does
 surface a scaling mistake. The trap is deriving the expected value from the
 function under test: that puts the same wrong factor on both sides of the
 assertion, where it cancels and the test passes either way.
+
+Since the checks report their capacity, prefer asserting it against the
+published value straight out of the function. Both defects above are caught
+that way in one line, and the assertion says what the number is rather than
+what it implies.
 
 ## Contributing a validation case
 
