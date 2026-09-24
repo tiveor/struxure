@@ -27,7 +27,12 @@ export function designConcreteElement(
   const isColumn = Math.abs(axialForce) > 0.1 * fc * Ag;
 
   if (isColumn) {
-    const columnRatio = checkColumn(Math.abs(axialForce), Math.abs(moment), material, section);
+    const { ratio: columnRatio } = checkColumn(
+      Math.abs(axialForce),
+      Math.abs(moment),
+      material,
+      section
+    );
     return {
       elementId,
       material: 'concrete',

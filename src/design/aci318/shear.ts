@@ -6,15 +6,16 @@ import type { Material, Section } from '../../core/types';
  * Vc = 2 * √f'c * bw * d (simplified, Eq. 22.5.5.1)
  * φ = 0.75 for shear
  *
- * Returns: { ratio, AvRequired }
+ * Returns: { ratio, AvRequired, phiVn }
+ *
+ * phiVn is the governing shear capacity: phi*Vc where the concrete alone
+ * carries the demand, and phi*(Vc + Vs) once stirrups are required.
  */
 export function checkShear(
   Vu: number,         // Required shear (kips, absolute)
   material: Material,
   section: Section
-): { ratio: number; AvRequired: number } {
-  if (Math.abs(Vu) < 1e-10) return { ratio: 0, AvRequired: 0 };
-
+): { ratio: number; AvRequired: number; phiVn: number } {
   const fc = (material.fc || 4); // ksi
   const fy_stirrup = 60; // Grade 60 stirrups (ksi)
   const phi = 0.75;
@@ -30,9 +31,11 @@ export function checkShear(
 
   const phiVc = phi * Vc;
 
+  if (Math.abs(Vu) < 1e-10) return { ratio: 0, AvRequired: 0, phiVn: phiVc };
+
   if (Math.abs(Vu) <= phiVc) {
     // Concrete alone is sufficient
-    return { ratio: Math.abs(Vu) / phiVc, AvRequired: 0 };
+    return { ratio: Math.abs(Vu) / phiVc, AvRequired: 0, phiVn: phiVc };
   }
 
   // Required Vs = Vu/φ - Vc
@@ -42,7 +45,9 @@ export function checkShear(
   const Vs_max = (8 * Math.sqrt(fc * 1000) * bw * d) / 1000;
 
   if (Vs_required > Vs_max) {
-    return { ratio: 10, AvRequired: 999 };
+    // Past the ceiling the section can reach, so report that ceiling rather
+    // than a capacity sized to a demand it cannot carry.
+    return { ratio: 10, AvRequired: 999, phiVn: phi * (Vc + Vs_max) };
   }
 
   // Required stirrup area: Av/s = Vs / (fy * d)
@@ -53,5 +58,5 @@ export function checkShear(
   const phiVn = phi * (Vc + Vs_required);
   const ratio = Math.abs(Vu) / phiVn;
 
-  return { ratio, AvRequired };
+  return { ratio, AvRequired, phiVn };
 }
