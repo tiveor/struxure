@@ -56,9 +56,15 @@ validated.
 |---|---|
 | `solveModel` end-to-end (K·u = F, reactions, element forces) | Validated against analytical beam solutions |
 | Internal force distribution along members | Self-consistent |
-| Local stiffness matrix, 3D transformation, assembly, boundary conditions | Unverified in isolation — only exercised through `solveModel` |
+| Local element stiffness matrix and fixed-end forces (`local-stiffness.ts`) | Validated against the closed-form space-frame element matrix, entry by entry, plus symmetry and the six rigid-body modes |
+| 3D transformation, assembly, boundary conditions | Unverified in isolation — only exercised through `solveModel` |
 
-Expanding these into standalone validation cases is on the [roadmap](../ROADMAP.md).
+Expanding the remaining ones into standalone validation cases is on the
+[roadmap](../ROADMAP.md). End-to-end coverage is not a substitute: a sign error
+in the weak-axis coupling term of the local stiffness matrix passes the entire
+`solveModel` suite. Every model in it is planar in XY and loaded in plane, so
+the weak-axis bending DOFs are never excited and the wrong term never reaches
+a result.
 
 ## Known unit pitfalls
 
