@@ -98,8 +98,12 @@ function checkRequiredArrays(parsed: Record<string, unknown>): string[] {
       errors.push(`Missing or invalid "${key}" array`);
     }
   }
-  if (!Array.isArray(parsed.distributedLoads)) {
+  // Absent is fine and defaults to empty, but present-and-wrong is not:
+  // overwriting it would drop the loads and still report the file as valid.
+  if (parsed.distributedLoads === undefined) {
     parsed.distributedLoads = [];
+  } else if (!Array.isArray(parsed.distributedLoads)) {
+    errors.push('Missing or invalid "distributedLoads" array');
   }
   return errors;
 }

@@ -68,6 +68,14 @@ describe('validateModelJson', () => {
     expect(result.model?.distributedLoads).toEqual([]);
   });
 
+  it('rejects a distributedLoads that is present but not an array', () => {
+    // Quietly replacing it with [] drops the loads and reports success, which
+    // is the silently-wrong-values case this validator exists to catch.
+    const result = validateModelJson(jsonOf({ distributedLoads: { E1: { wy: -5 } } }));
+    expect(result.success).toBe(false);
+    expect(result.errors).toContain('Missing or invalid "distributedLoads" array');
+  });
+
   it('rejects a node with a non-numeric coordinate', () => {
     const result = validateModelJson(
       jsonOf({ nodes: [{ id: 'N1', x: 'abc', y: 0, z: 0 }] }),
@@ -187,5 +195,45 @@ describe('extractAndValidateModel (AI path)', () => {
     const result = extractAndValidateModel(JSON.stringify({ ...validModel, nodes: [null] }));
     expect(result.success).toBe(false);
     expect(result.errors).toContain('Node 1: expected an object');
+  });
+
+  it('accepts a material without G or density, and the result round-trips', () => {
+    // The two paths have to agree: a model the AI path accepts gets saved, and
+    // reopening it goes through the strict file path. Leaving the constants out
+    // is the same class of omission as the betaAngle this already defaults.
+    const ai = extractAndValidateModel(JSON.stringify({
+      ...validModel,
+      materials: [{ id: 'M1', name: 'A992', type: 'steel', E: 29000, fy: 50 }],
+    }));
+    expect(ai.errors).toEqual([]);
+    expect(ai.success).toBe(true);
+
+    const reopened = validateModelJson(JSON.stringify(ai.model));
+    expect(reopened.errors).toEqual([]);
+    expect(reopened.success).toBe(true);
+  });
+
+  it('derives a missing G from E and takes density from the material type', () => {
+    // material-library.ts uses nu = 0.3 for steel and nu = 0.2 for concrete,
+    // with 490 pcf and 150 pcf. The same constants are applied here.
+    const steel = extractAndValidateModel(JSON.stringify({
+      ...validModel,
+      materials: [{ id: 'M1', name: 'A992', type: 'steel', E: 29000 }],
+    }));
+    expect(steel.model?.materials[0].G).toBeCloseTo(29000 / 2.6, 6);
+    expect(steel.model?.materials[0].density).toBeCloseTo(0.000284, 9);
+
+    const concrete = extractAndValidateModel(JSON.stringify({
+      ...validModel,
+      materials: [{ id: 'M1', name: "f'c 4 ksi", type: 'concrete', E: 3605, fc: 4 }],
+    }));
+    expect(concrete.model?.materials[0].G).toBeCloseTo(3605 / 2.4, 6);
+    expect(concrete.model?.materials[0].density).toBeCloseTo(0.0000868, 10);
+  });
+
+  it('leaves G and density alone when the model supplies them', () => {
+    const result = extractAndValidateModel(JSON.stringify(validModel));
+    expect(result.model?.materials[0].G).toBe(11200);
+    expect(result.model?.materials[0].density).toBeCloseTo(0.000284, 9);
   });
 });

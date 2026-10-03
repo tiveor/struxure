@@ -1,4 +1,5 @@
 import { isRecord, validateModelShape } from './model-validator';
+import { CONCRETE_DENSITY, STEEL_DENSITY } from './material-library';
 import type { ValidationResult } from './model-validator';
 
 export type { ValidationResult };
@@ -36,12 +37,22 @@ function coerceModel(parsed: Record<string, unknown>): void {
     }
   }
 
-  // Coerce material IDs
+  // Coerce material IDs, and fill the two constants LLMs routinely omit.
+  // Without this the AI path accepts a material the strict file path then
+  // rejects on reopen, so a saved model stops being openable. Poisson's ratio
+  // follows material-library.ts: 0.3 for steel, 0.2 for concrete.
   const materials = parsed.materials as Array<Record<string, unknown>> | undefined;
   if (Array.isArray(materials)) {
     for (const m of materials) {
       if (!isRecord(m)) continue;
       if (typeof m.id === 'number') m.id = `M${m.id}`;
+      const isConcrete = m.type === 'concrete';
+      if (typeof m.G !== 'number' && typeof m.E === 'number') {
+        m.G = m.E / (isConcrete ? 2.4 : 2.6);
+      }
+      if (typeof m.density !== 'number') {
+        m.density = isConcrete ? CONCRETE_DENSITY : STEEL_DENSITY;
+      }
     }
   }
 
