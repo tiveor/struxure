@@ -10,6 +10,7 @@ import { exportResultsToIfc } from '../../utils/ifc-export';
 import { importIfc } from '../../utils/ifc-import';
 import type { IfcImportResult } from '../../utils/ifc-import';
 import { TEMPLATES } from '../../utils/templates';
+import { validateModelJson } from '../../utils/model-validator';
 import { track } from '../../utils/analytics';
 import { AboutDialog } from '../shared/AboutDialog';
 import { AnalysisProgress } from '../shared/AnalysisProgress';
@@ -115,16 +116,16 @@ export function Toolbar() {
 
       const reader = new FileReader();
       reader.onload = () => {
-        try {
-          const model = JSON.parse(reader.result as string);
-          track('open_file');
-          loadModel(model);
-          setModelName(file.name.replace(/\.json$/i, ''));
-          clearResults();
-          window.dispatchEvent(new Event('zoom-extents'));
-        } catch {
-          alert('Invalid model file');
+        const validation = validateModelJson(reader.result as string);
+        if (!validation.success || !validation.model) {
+          alert(`Invalid model file:\n\n${validation.errors.join('\n')}`);
+          return;
         }
+        track('open_file');
+        loadModel(validation.model);
+        setModelName(file.name.replace(/\.json$/i, ''));
+        clearResults();
+        window.dispatchEvent(new Event('zoom-extents'));
       };
       reader.readAsText(file);
     };

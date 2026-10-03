@@ -6,7 +6,7 @@ export type LibraryMaterial = Omit<Material, 'id'> & { category: string };
 // ─── Steel grades (ASTM) ────────────────────────────────────────────
 // All values in kip-inch (E, G in ksi; fy, fu in ksi; density in kip/in³)
 
-const STEEL_DENSITY = 0.000284; // 490 pcf
+export const STEEL_DENSITY = 0.000284; // 490 pcf
 
 const steels: LibraryMaterial[] = [
   {
@@ -63,7 +63,7 @@ const steels: LibraryMaterial[] = [
 // E = 57000 * sqrt(f'c in psi) → converted to ksi
 // G = E / (2 * (1 + ν)), ν = 0.2 for concrete
 
-const CONCRETE_DENSITY = 0.0000868; // 150 pcf
+export const CONCRETE_DENSITY = 0.0000868; // 150 pcf
 
 function concreteGrade(fcKsi: number): LibraryMaterial {
   const fcPsi = fcKsi * 1000;

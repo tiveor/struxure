@@ -33,12 +33,14 @@ interface ModelState {
   // Material CRUD
   addMaterial: (material: Material) => void;
   updateMaterial: (id: string, updates: Partial<Material>) => void;
-  removeMaterial: (id: string) => void;
+  /** Returns false without deleting while an element still references the material. */
+  removeMaterial: (id: string) => boolean;
 
   // Section CRUD
   addSection: (section: Section) => void;
   updateSection: (id: string, updates: Partial<Section>) => void;
-  removeSection: (id: string) => void;
+  /** Returns false without deleting while an element still references the section. */
+  removeSection: (id: string) => boolean;
 
   // Support CRUD
   addSupport: (support: Support) => void;
@@ -116,12 +118,19 @@ export const useModelStore = create<ModelState>((set, get) => ({
   updateNode: (id, updates) =>
     set((s) => ({ nodes: s.nodes.map((n) => (n.id === id ? { ...n, ...updates } : n)) })),
   removeNode: (id) =>
-    set((s) => ({
-      nodes: s.nodes.filter((n) => n.id !== id),
-      elements: s.elements.filter((e) => e.nodeI !== id && e.nodeJ !== id),
-      supports: s.supports.filter((sup) => sup.nodeId !== id),
-      nodalLoads: s.nodalLoads.filter((l) => l.nodeId !== id),
-    })),
+    set((s) => {
+      const elements = s.elements.filter((e) => e.nodeI !== id && e.nodeJ !== id);
+      // Elements removed above can carry distributed loads — drop those too or
+      // they would reference an element that no longer exists.
+      const elementIds = new Set(elements.map((e) => e.id));
+      return {
+        nodes: s.nodes.filter((n) => n.id !== id),
+        elements,
+        supports: s.supports.filter((sup) => sup.nodeId !== id),
+        nodalLoads: s.nodalLoads.filter((l) => l.nodeId !== id),
+        distributedLoads: s.distributedLoads.filter((dl) => elementIds.has(dl.elementId)),
+      };
+    }),
 
   addElement: (element) => set((s) => ({ elements: [...s.elements, element] })),
   updateElement: (id, updates) =>
@@ -135,12 +144,24 @@ export const useModelStore = create<ModelState>((set, get) => ({
   addMaterial: (material) => set((s) => ({ materials: [...s.materials, material] })),
   updateMaterial: (id, updates) =>
     set((s) => ({ materials: s.materials.map((m) => (m.id === id ? { ...m, ...updates } : m)) })),
-  removeMaterial: (id) => set((s) => ({ materials: s.materials.filter((m) => m.id !== id) })),
+  // Refuse rather than cascade: a single material or section can back every
+  // element in the model, so deleting it would silently remove them all.
+  removeMaterial: (id) => {
+    const s = get();
+    if (s.elements.some((e) => e.materialId === id)) return false;
+    set({ materials: s.materials.filter((m) => m.id !== id) });
+    return true;
+  },
 
   addSection: (section) => set((s) => ({ sections: [...s.sections, section] })),
   updateSection: (id, updates) =>
     set((s) => ({ sections: s.sections.map((sec) => (sec.id === id ? { ...sec, ...updates } : sec)) })),
-  removeSection: (id) => set((s) => ({ sections: s.sections.filter((sec) => sec.id !== id) })),
+  removeSection: (id) => {
+    const s = get();
+    if (s.elements.some((e) => e.sectionId === id)) return false;
+    set({ sections: s.sections.filter((sec) => sec.id !== id) });
+    return true;
+  },
 
   addSupport: (support) => set((s) => ({ supports: [...s.supports, support] })),
   updateSupport: (nodeId, updates) =>

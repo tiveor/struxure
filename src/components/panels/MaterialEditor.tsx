@@ -15,6 +15,7 @@ type LibTab = 'steel' | 'concrete' | 'custom';
 
 export function MaterialEditor() {
   const materials = useModelStore((s) => s.materials);
+  const elements = useModelStore((s) => s.elements);
   const addMaterial = useModelStore((s) => s.addMaterial);
   const removeMaterial = useModelStore((s) => s.removeMaterial);
   const unitSystem = useUIStore((s) => s.unitSystem);
@@ -216,7 +217,12 @@ export function MaterialEditor() {
                   <td className="px-4 py-2">
                     <span
                       className="material-icons-round text-sm opacity-0 group-hover:opacity-100 cursor-pointer text-slate-400 hover:text-red-400"
-                      onClick={() => removeMaterial(m.id)}
+                      onClick={() => {
+                        if (!removeMaterial(m.id)) {
+                          const usedBy = elements.filter((e) => e.materialId === m.id).length;
+                          alert(`"${m.name}" is used by ${usedBy} element${usedBy === 1 ? '' : 's'} — reassign or delete them first.`);
+                        }
+                      }}
                       title="Delete material"
                     >
                       delete

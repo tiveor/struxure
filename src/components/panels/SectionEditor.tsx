@@ -11,6 +11,7 @@ const labelCls = 'block text-[10px] font-semibold text-slate-500 mb-1 uppercase'
 
 export function SectionEditor() {
   const sections = useModelStore((s) => s.sections);
+  const elements = useModelStore((s) => s.elements);
   const addSection = useModelStore((s) => s.addSection);
   const removeSection = useModelStore((s) => s.removeSection);
   const unitSystem = useUIStore((s) => s.unitSystem);
@@ -112,7 +113,12 @@ export function SectionEditor() {
                   <td className="px-4 py-2">
                     <span
                       className="material-icons-round text-sm opacity-0 group-hover:opacity-100 cursor-pointer text-slate-400 hover:text-red-400"
-                      onClick={() => removeSection(s.id)}
+                      onClick={() => {
+                        if (!removeSection(s.id)) {
+                          const usedBy = elements.filter((e) => e.sectionId === s.id).length;
+                          alert(`"${s.name}" is used by ${usedBy} element${usedBy === 1 ? '' : 's'} — reassign or delete them first.`);
+                        }
+                      }}
                       title="Delete section"
                     >
                       delete
