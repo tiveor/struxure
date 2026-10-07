@@ -175,7 +175,7 @@ sizes and counts are plain numbers in every tag.
 |------------|---------|--------------------------------------|
 | Tension    | D       | Yielding of gross section            |
 | Compression| E       | Flexural buckling (Euler)            |
-| Flexure    | F       | Yielding + lateral-torsional buckling|
+| Flexure    | F       | Yielding + lateral-torsional buckling + flange local buckling (I-shapes)|
 | Combined   | H       | P-M interaction (Eq. H1-1a/b)        |
 
 ### Concrete (ACI 318)

@@ -32,6 +32,9 @@ inferred by feeding in a demand and reading the ratio back.
 | AISC 360 Ch. E — compression | AISC Manual Table 4-1: W10x49, KL = 14 ft → φcPn = 471 kips; both Eq. E3-2 and E3-3 branches | Validated |
 | AISC 360 Ch. F — flexure | AISC Manual Table 3-2: W18x50, Fy 50 → φbMp = 379 kip-ft, Lp = 5.83 ft | Validated at Lb ≤ Lp |
 | AISC 360 Ch. F — LTB beyond Lp | — | Self-consistent (monotonic decrease, capped at Mp) |
+| AISC 360 Ch. F — flange local buckling, noncompact flange (Eq. F3-1) | AISC Manual Table 3-2: W14x90, Fy 50 (bf/2tf = 10.2 > λpf = 9.15) → φbMpx = 574 kip-ft; HEA 300 at Fy = 345 MPa worked by hand in SI → φMn = 413.1 kN-m | Validated |
+| AISC 360 Ch. F — flange local buckling, slender flange (Eq. F3-2) | Hand calc with kc = 4/√(h/tw) | Validated against the equation only |
+| AISC 360 Ch. F — noncompact or slender web (F4/F5) | Not implemented; such results are flagged indicative | — |
 | AISC 360 Ch. H — P-M interaction | Eq. H1-1a / H1-1b, including the Pr/Pc = 0.2 switch | Validated |
 | AISC 360 — axial sign from the analysis (`design-runner.ts`) | End to end through `solveModel` + `runDesign`: a W12x26 cantilever column in compression (Sec. E3, hand worked, φPn = 177.0 kips) and in tension (Eq. D2-1, 344 kips), a bar with an axial member load in tension at one end and compression at the other, and a two-bar truss with one member in each | Validated, see the fixed defect below |
 | ACI 318 — beam flexure | ACI 318-19 §22.2 Whitney block and §9.6.1.2 minimum steel, worked by hand for a 12x24 with f'c = 4 ksi | Validated |
@@ -42,6 +45,50 @@ inferred by feeding in a demand and reading the ratio back.
 | ACI 318 — columns with reinforcement, biaxial | Linear load contour (Bresler, α = 1) | Self-consistent (conservative by construction) |
 | ACI 318 — columns without reinforcement, pure axial φPn,max | ACI 318-19 22.4.2.2 (Po) with the 0.80 tied cap of 22.4.2.1, worked by hand for a 16x16 at 1% steel → 528 kips | Validated |
 | ACI 318 — columns without reinforcement, P-M interaction | — | Self-consistent only, indicative (see the caveat below) |
+
+### European sections (IPE, HEA, HEB)
+
+`src/data/euro-sections.ts` holds IPE 80 to 600, HEA 100 to 600 and HEB 100
+to 600. The dimensions h, b, tw, tf and r are the standard EN 10365 ones
+(formerly DIN 1025-2, 1025-3 and 1025-5), taken from the ArcelorMittal
+"Sections and Merchant Bars" sales programme as reproduced by STAD's technical
+data pages, and cross-checked against two independent listings.
+
+The section properties are computed from those dimensions, with the four root
+fillets included: A, Iy, Iz, Wel and Wpl exactly, It with the closed-form
+approximation for rolled I-sections (El Darwish and Johnston, 1965). The tests
+in [`src/data/__tests__/euro-sections.test.ts`](../src/data/__tests__/euro-sections.test.ts)
+check every stored value against that derivation, and the reference sections
+against their published values: IPE 300 (A 53.81 cm², Iy 8356 cm⁴, Wpl,y
+628.4 cm³, It 20.12 cm⁴), HEA 200 (A 53.83 cm², Iy 3692 cm⁴, It 20.98 cm⁴)
+and HEB 200 (A 78.08 cm², Iy 5696 cm⁴, It 59.28 cm⁴). Across the whole set
+the derived values agree with the published table to within its rounding.
+
+The Eurocode strong axis y-y maps to the app's x axis (Ix, Sx, Zx), the weak
+axis z-z to y (Iy, Sy, Zy), and It to J.
+
+### Flange slenderness of rolled I-shapes
+
+Chapter F of AISC 360 was written around compact rolled shapes, and the
+European ones are not all compact under its limits. Checked against Table
+B4.1b (λpf = 0.38√(E/Fy), λrf = 1.0√(E/Fy), λpw = 3.76√(E/Fy)) at Fy = 50 ksi
+and at 345 MPa:
+
+- **Noncompact flange:** HEA 180, 200, 220, 240, 260, 280, 300 and 320
+  (bf/2tf from 9.47 to 10.77 against λpf = 9.15). No EN section has a slender
+  flange.
+- **Webs:** every EN section is compact (h/tw at most 47 against 90.5).
+- **AISC library:** W10x12, W8x31, W8x10, W6x15 and W6x9 also have noncompact
+  flanges at Fy = 50 ksi, matching note f of the AISC Manual tables.
+
+The flexure check now classifies the flange of every I-shape (`shape: 'I'`,
+or a W name in older files) and takes the lower of lateral-torsional buckling
+and flange local buckling per F3: Eq. F3-1 for a noncompact flange and
+Eq. F3-2 for a slender one. Before this, the capacity of these sections was
+φMp, unconservative by up to about 4% for the HEA range. A noncompact or
+slender web would need F4 or F5, which are not implemented, so such a result
+is marked indicative with the reason shown next to the ratio. The web ratio
+uses h = d - 2tf, which slightly overstates it.
 
 ### Fixed: compressed steel members were checked in tension
 
