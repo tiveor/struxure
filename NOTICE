@@ -27,6 +27,13 @@ Section property values are physical properties of standard rolled shapes.
 Users requiring authoritative values must consult the current edition of the
 governing standard.
 
+The European IPE, HEA and HEB sections use the standard dimensions of
+EN 10365 (formerly DIN 1025-2, 1025-3 and 1025-5), as listed in the
+ArcelorMittal "Sections and Merchant Bars" sales programme. Their section
+properties are computed from those dimensions by Struxure and checked against
+the published tables. Struxure is not affiliated with or endorsed by
+ArcelorMittal, CEN or DIN.
+
 --------------------------------------------------------------------------------
 No warranty
 
