@@ -9,7 +9,8 @@ import { checkCombined } from './combined';
  * Full AISC 360 design check for a steel element.
  *
  * @param elementId Element ID
- * @param axialForce Axial force (positive = tension, negative = compression)
+ * @param tensionForce Governing axial tension along the member (kips, >= 0)
+ * @param compressionForce Governing axial compression along the member (kips, >= 0)
  * @param momentZ Moment about local Z (strong axis) at critical section
  * @param material Steel material
  * @param section Section properties
@@ -17,22 +18,24 @@ import { checkCombined } from './combined';
  */
 export function designSteelElement(
   elementId: string,
-  axialForce: number,
+  tensionForce: number,
+  compressionForce: number,
   momentZ: number,
   material: Material,
   section: Section,
   L: number
 ): SteelDesignResult {
   // Tension check
-  const { ratio: tensionRatio } = checkTension(axialForce, material, section);
+  const { ratio: tensionRatio } = checkTension(tensionForce, material, section);
 
   // Compression check
-  const { ratio: compressionRatio } = checkCompression(-axialForce, material, section, L, L);
+  const { ratio: compressionRatio } = checkCompression(compressionForce, material, section, L, L);
 
   // Flexure check
   const { ratio: flexureRatio } = checkFlexure(momentZ, material, section, L);
 
-  // Axial ratio for combined check (governing of tension or compression)
+  // Axial ratio for the combined check: the governing one of tension and
+  // compression, each taken against its own capacity.
   const axialRatio = Math.max(tensionRatio, compressionRatio);
 
   // Combined interaction check

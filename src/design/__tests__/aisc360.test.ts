@@ -209,7 +209,7 @@ describe('AISC 360 Chapter H — combined forces', () => {
 describe('AISC 360 — element result', () => {
   it('is a code check, never flagged as indicative', () => {
     // Only the ACI 318 column screening check carries the indicative flag.
-    expect(designSteelElement('S1', 50, 1200, A992, W12x26, 144).indicative).toBeUndefined();
-    expect(designSteelElement('S2', -50, 1200, A992, W12x26, 144).indicative).toBeUndefined();
+    expect(designSteelElement('S1', 50, 0, 1200, A992, W12x26, 144).indicative).toBeUndefined();
+    expect(designSteelElement('S2', 0, 50, 1200, A992, W12x26, 144).indicative).toBeUndefined();
   });
 });

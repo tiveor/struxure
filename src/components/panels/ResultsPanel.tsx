@@ -59,14 +59,14 @@ export function ResultsPanel() {
         </ResultTable>
 
         {/* Element Forces */}
-        <ResultTable title="Element Forces" columns={['Elem', `Axial (${forceUnit})`, `Shear Y (${forceUnit})`, `Moment Z (${momentUnit})`]}>
+        <ResultTable title="Element Forces" columns={['Elem', `Axial, +T (${forceUnit})`, `Shear Y (${forceUnit})`, `Moment Z (${momentUnit})`]}>
           {elements.map((elem) => {
             const f = analysisResults.elementForces.get(elem.id);
             if (!f) return null;
             return (
               <tr key={elem.id} className="hover:bg-slate-800 transition-colors">
                 <td className="px-4 py-2 font-mono font-bold text-accent">{elem.id}</td>
-                <td className="px-4 py-2 text-right font-mono text-slate-400">{toDisplay(f.startForces[0], 'force', unitSystem).toFixed(2)}</td>
+                <td className="px-4 py-2 text-right font-mono text-slate-400">{toDisplay(-f.startForces[0], 'force', unitSystem).toFixed(2)}</td>
                 <td className="px-4 py-2 text-right font-mono text-slate-400">{toDisplay(f.startForces[1], 'force', unitSystem).toFixed(2)}</td>
                 <td className="px-4 py-2 text-right font-mono text-slate-400">{toDisplay(f.startForces[5], 'moment', unitSystem).toFixed(2)}</td>
               </tr>

@@ -33,6 +33,7 @@ inferred by feeding in a demand and reading the ratio back.
 | AISC 360 Ch. F — flexure | AISC Manual Table 3-2: W18x50, Fy 50 → φbMp = 379 kip-ft, Lp = 5.83 ft | Validated at Lb ≤ Lp |
 | AISC 360 Ch. F — LTB beyond Lp | — | Self-consistent (monotonic decrease, capped at Mp) |
 | AISC 360 Ch. H — P-M interaction | Eq. H1-1a / H1-1b, including the Pr/Pc = 0.2 switch | Validated |
+| AISC 360 — axial sign from the analysis (`design-runner.ts`) | End to end through `solveModel` + `runDesign`: a W12x26 cantilever column in compression (Sec. E3, hand worked, φPn = 177.0 kips) and in tension (Eq. D2-1, 344 kips), a bar with an axial member load in tension at one end and compression at the other, and a two-bar truss with one member in each | Validated, see the fixed defect below |
 | ACI 318 — beam flexure | ACI 318-19 §22.2 Whitney block and §9.6.1.2 minimum steel, worked by hand for a 12x24 with f'c = 4 ksi | Validated |
 | ACI 318 — beam shear | ACI 318-19 Eq. 22.5.5.1 (Vc) and §22.5.1.2 (Vs limit) | Validated |
 | ACI 318 — columns with reinforcement, P-M interaction | Strain compatibility per ACI 318-19 22.2 (Whitney block, β1 per Table 22.2.2.4.3, εcu = 0.003, Es = 29000 ksi), φ per Table 21.2.2, Pn,max = 0.80 Po (22.4.2.1). Two hand calculations reproduced in full in the test: 16x16 with 8 #8, f'c = 4 ksi (Po = 1228.1 kips, φPn,max = 638.6 kips, balanced φPn = 237.8 kips / φMn = 2118.7 kip-in, pure bending φMn = 2043.2 kip-in, φPnt = 341.3 kips) and 12x20 with 6 #9, f'c = 5 ksi (β1 = 0.80; Po = 1354.5 kips, balanced Pn = 411.3 kips / Mn = 5103.1 kip-in, pure bending φMn = 2585.9 kip-in, φPnt = 324 kips) | Validated |
@@ -41,6 +42,21 @@ inferred by feeding in a demand and reading the ratio back.
 | ACI 318 — columns with reinforcement, biaxial | Linear load contour (Bresler, α = 1) | Self-consistent (conservative by construction) |
 | ACI 318 — columns without reinforcement, pure axial φPn,max | ACI 318-19 22.4.2.2 (Po) with the 0.80 tied cap of 22.4.2.1, worked by hand for a 16x16 at 1% steel → 528 kips | Validated |
 | ACI 318 — columns without reinforcement, P-M interaction | — | Self-consistent only, indicative (see the caveat below) |
+
+### Fixed: compressed steel members were checked in tension
+
+`runDesign` read `startForces[0]` as the axial force with tension positive.
+Element end forces are the forces the nodes exert on the element, so a
+compressed member has `startForces[0] > 0`. Every compressed steel member was
+therefore checked in tension yielding and buckling was never checked, while
+tension members were checked for buckling. A 144 in W12x26 cantilever column
+under 100 kips of compression reported a tension ratio of 0.29 and a
+compression ratio of 0; it now reports a compression ratio of 0.565 and a
+tension ratio of 0. The runner now takes the governing tension and compression
+over both ends, so a member whose axial force changes sign under an axial
+member load is checked both ways. **Any steel result from earlier versions
+should be re-run.** The axial force diagram and the axial column of the
+results panel had the same sign flip and now show tension as positive.
 
 ### ACI 318 columns
 
