@@ -46,7 +46,19 @@ export type ConcreteColumnDetails = {
   rhoAssumed: number;    // assumed longitudinal steel ratio Ast/Ag
 };
 
+/**
+ * Concrete column whose section defines its bars, checked against the
+ * strain-compatibility P-M diagram. Not indicative.
+ */
+export type ConcreteReinforcedColumnDetails = {
+  flexureRatio: number;  // P-M interaction ratio (radial, see interaction.ts)
+  shearRatio: number;    // always 0, shear is not checked on the column branch
+  AvRequired: number;    // always 0
+  AsProvided: number;    // in², total longitudinal steel of the section
+  rhoProvided: number;   // AsProvided / Ag
+};
+
 export interface ConcreteDesignResult extends DesignCheckResult {
   material: 'concrete';
-  details: ConcreteBeamDetails | ConcreteColumnDetails;
+  details: ConcreteBeamDetails | ConcreteColumnDetails | ConcreteReinforcedColumnDetails;
 }
