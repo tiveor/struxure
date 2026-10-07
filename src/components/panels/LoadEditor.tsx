@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useModelStore } from '../../store/model-store';
 import { useUIStore } from '../../store/ui-store';
-import { unitLabel, toDisplay, fromDisplay } from '../../utils/units';
+import { unitLabel, formatQuantity } from '../../utils/units';
+import { QuantityInput } from '../shared/QuantityInput';
 
 const inputCls = 'w-full bg-slate-900 border border-slate-700 rounded text-sm px-3 py-2 text-slate-200 focus:ring-accent focus:border-accent';
 const numCls = 'w-full bg-slate-900 border border-slate-700 rounded text-sm p-1.5 text-center font-mono text-slate-200 focus:ring-accent focus:border-accent';
@@ -22,49 +23,38 @@ export function LoadEditor() {
 
   const [activeTab, setActiveTab] = useState<LoadTab>('nodal');
 
+  // Form drafts are held in internal units (kip, kip-in, kip/in), so a
+  // unit switch mid-edit re-renders them in the new unit instead of saving
+  // a number typed for the old one.
+
   // Nodal load form
   const [nodeId, setNodeId] = useState('');
-  const [fx, setFx] = useState('0');
-  const [fy, setFy] = useState('0');
-  const [fz, setFz] = useState('0');
-  const [mx, setMx] = useState('0');
-  const [my, setMy] = useState('0');
-  const [mz, setMz] = useState('0');
+  const [fx, setFx] = useState(0);
+  const [fy, setFy] = useState(0);
+  const [fz, setFz] = useState(0);
+  const [mx, setMx] = useState(0);
+  const [my, setMy] = useState(0);
+  const [mz, setMz] = useState(0);
 
   // Distributed load form
   const [elemId, setElemId] = useState('');
-  const [wx, setWx] = useState('0');
-  const [wy, setWy] = useState('0');
-  const [wz, setWz] = useState('0');
-
-  const num = (s: string) => { const n = parseFloat(s); return isNaN(n) ? 0 : n; };
+  const [wx, setWx] = useState(0);
+  const [wy, setWy] = useState(0);
+  const [wz, setWz] = useState(0);
 
   const handleAddNodal = () => {
     if (!nodeId) return;
     const id = `L${nodalLoads.length + 1}`;
-    addNodalLoad({
-      id, nodeId,
-      fx: fromDisplay(num(fx), 'force', unitSystem),
-      fy: fromDisplay(num(fy), 'force', unitSystem),
-      fz: fromDisplay(num(fz), 'force', unitSystem),
-      mx: fromDisplay(num(mx), 'moment', unitSystem),
-      my: fromDisplay(num(my), 'moment', unitSystem),
-      mz: fromDisplay(num(mz), 'moment', unitSystem),
-    });
-    setFx('0'); setFy('0'); setFz('0');
-    setMx('0'); setMy('0'); setMz('0');
+    addNodalLoad({ id, nodeId, fx, fy, fz, mx, my, mz });
+    setFx(0); setFy(0); setFz(0);
+    setMx(0); setMy(0); setMz(0);
   };
 
   const handleAddDistributed = () => {
     if (!elemId) return;
     const id = `DL${distributedLoads.length + 1}`;
-    addDistributedLoad({
-      id, elementId: elemId,
-      wx: fromDisplay(num(wx), 'forcePerLength', unitSystem),
-      wy: fromDisplay(num(wy), 'forcePerLength', unitSystem),
-      wz: fromDisplay(num(wz), 'forcePerLength', unitSystem),
-    });
-    setWx('0'); setWy('0'); setWz('0');
+    addDistributedLoad({ id, elementId: elemId, wx, wy, wz });
+    setWx(0); setWy(0); setWz(0);
   };
 
   const tabs: { key: LoadTab; label: string; icon: string }[] = [
@@ -112,15 +102,15 @@ export function LoadEditor() {
               <div className="grid grid-cols-3 gap-2 mt-1">
                 <div>
                   <label className={labelCls} htmlFor="load-fx">Fx</label>
-                  <input id="load-fx" type="number" className={numCls} value={fx} onChange={(e) => setFx(e.target.value)} />
+                  <QuantityInput id="load-fx" qty="force" unitSystem={unitSystem} className={numCls} value={fx} onChange={setFx} />
                 </div>
                 <div>
                   <label className={labelCls} htmlFor="load-fy">Fy</label>
-                  <input id="load-fy" type="number" className={numCls} value={fy} onChange={(e) => setFy(e.target.value)} />
+                  <QuantityInput id="load-fy" qty="force" unitSystem={unitSystem} className={numCls} value={fy} onChange={setFy} />
                 </div>
                 <div>
                   <label className={labelCls} htmlFor="load-fz">Fz</label>
-                  <input id="load-fz" type="number" className={numCls} value={fz} onChange={(e) => setFz(e.target.value)} />
+                  <QuantityInput id="load-fz" qty="force" unitSystem={unitSystem} className={numCls} value={fz} onChange={setFz} />
                 </div>
               </div>
             </div>
@@ -130,15 +120,15 @@ export function LoadEditor() {
               <div className="grid grid-cols-3 gap-2 mt-1">
                 <div>
                   <label className={labelCls} htmlFor="load-mx">Mx</label>
-                  <input id="load-mx" type="number" className={numCls} value={mx} onChange={(e) => setMx(e.target.value)} />
+                  <QuantityInput id="load-mx" qty="moment" unitSystem={unitSystem} className={numCls} value={mx} onChange={setMx} />
                 </div>
                 <div>
                   <label className={labelCls} htmlFor="load-my">My</label>
-                  <input id="load-my" type="number" className={numCls} value={my} onChange={(e) => setMy(e.target.value)} />
+                  <QuantityInput id="load-my" qty="moment" unitSystem={unitSystem} className={numCls} value={my} onChange={setMy} />
                 </div>
                 <div>
                   <label className={labelCls} htmlFor="load-mz">Mz</label>
-                  <input id="load-mz" type="number" className={numCls} value={mz} onChange={(e) => setMz(e.target.value)} />
+                  <QuantityInput id="load-mz" qty="moment" unitSystem={unitSystem} className={numCls} value={mz} onChange={setMz} />
                 </div>
               </div>
             </div>
@@ -171,15 +161,15 @@ export function LoadEditor() {
               <div className="grid grid-cols-3 gap-2">
                 <div>
                   <label className={labelCls} htmlFor="load-wx">Wx</label>
-                  <input id="load-wx" type="number" className={numCls} value={wx} onChange={(e) => setWx(e.target.value)} step="any" />
+                  <QuantityInput id="load-wx" qty="forcePerLength" unitSystem={unitSystem} className={numCls} value={wx} onChange={setWx} />
                 </div>
                 <div>
                   <label className={labelCls} htmlFor="load-wy">Wy</label>
-                  <input id="load-wy" type="number" className={numCls} value={wy} onChange={(e) => setWy(e.target.value)} step="any" />
+                  <QuantityInput id="load-wy" qty="forcePerLength" unitSystem={unitSystem} className={numCls} value={wy} onChange={setWy} />
                 </div>
                 <div>
                   <label className={labelCls} htmlFor="load-wz">Wz</label>
-                  <input id="load-wz" type="number" className={numCls} value={wz} onChange={(e) => setWz(e.target.value)} step="any" />
+                  <QuantityInput id="load-wz" qty="forcePerLength" unitSystem={unitSystem} className={numCls} value={wz} onChange={setWz} />
                 </div>
               </div>
             </div>
@@ -211,7 +201,8 @@ export function LoadEditor() {
                   <tr className="text-[10px] font-bold text-slate-400 uppercase border-b border-slate-800">
                     <th className="px-4 py-1.5 w-12">ID</th>
                     <th className="px-4 py-1.5">Node</th>
-                    <th className="px-4 py-1.5">Forces</th>
+                    <th className="px-4 py-1.5">Forces ({unitLabel('force', unitSystem)})</th>
+                    <th className="px-4 py-1.5">Moments ({unitLabel('moment', unitSystem)})</th>
                     <th className="px-4 py-1.5 w-10"></th>
                   </tr>
                 </thead>
@@ -221,7 +212,10 @@ export function LoadEditor() {
                       <td className="px-4 py-1.5 text-accent font-bold">{l.id}</td>
                       <td className="px-4 py-1.5 text-slate-400">{l.nodeId}</td>
                       <td className="px-4 py-1.5 text-slate-400 text-xs">
-                        ({toDisplay(l.fx, 'force', unitSystem).toFixed(1)}, {toDisplay(l.fy, 'force', unitSystem).toFixed(1)}, {toDisplay(l.fz, 'force', unitSystem).toFixed(1)})
+                        ({formatQuantity(l.fx, 'force', unitSystem, 1)}, {formatQuantity(l.fy, 'force', unitSystem, 1)}, {formatQuantity(l.fz, 'force', unitSystem, 1)})
+                      </td>
+                      <td className="px-4 py-1.5 text-slate-400 text-xs">
+                        ({formatQuantity(l.mx, 'moment', unitSystem, 1)}, {formatQuantity(l.my, 'moment', unitSystem, 1)}, {formatQuantity(l.mz, 'moment', unitSystem, 1)})
                       </td>
                       <td className="px-4 py-1.5">
                         <span
@@ -260,7 +254,7 @@ export function LoadEditor() {
                       <td className="px-4 py-1.5 text-accent font-bold">{dl.id}</td>
                       <td className="px-4 py-1.5 text-slate-400">{dl.elementId}</td>
                       <td className="px-4 py-1.5 text-slate-400 text-xs">
-                        ({toDisplay(dl.wx, 'forcePerLength', unitSystem).toFixed(3)}, {toDisplay(dl.wy, 'forcePerLength', unitSystem).toFixed(3)}, {toDisplay(dl.wz, 'forcePerLength', unitSystem).toFixed(3)})
+                        ({formatQuantity(dl.wx, 'forcePerLength', unitSystem)}, {formatQuantity(dl.wy, 'forcePerLength', unitSystem)}, {formatQuantity(dl.wz, 'forcePerLength', unitSystem)})
                       </td>
                       <td className="px-4 py-1.5">
                         <span

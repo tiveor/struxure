@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { NodeEditor } from '../NodeEditor';
 import { useModelStore } from '../../../store/model-store';
@@ -137,5 +137,38 @@ describe('NodeEditor', () => {
 
     expect(useModelStore.getState().nodes.at(-1)).toEqual({ id: 'N9', x: 0, y: 60, z: 0 });
     expect(row('N9')).toBeInTheDocument();
+  });
+});
+
+describe('NodeEditor, metric units', () => {
+  it('shows coordinates in metres and stores typed metres as inches', async () => {
+    useUIStore.setState({ unitSystem: 'metric' });
+    render(<NodeEditor />);
+
+    expect(screen.getByRole('columnheader', { name: /coordinates.*\(m\)/i })).toBeInTheDocument();
+    expect(within(row('N3')).getByText('(3.048, 3.658, 0.914)')).toBeInTheDocument();
+
+    await userEvent.click(row('N2'));
+    expect(coordinateInputs().x).toHaveValue(3.048);
+
+    await userEvent.clear(coordinateInputs().x);
+    await userEvent.type(coordinateInputs().x, '6.096');
+    await userEvent.click(screen.getByRole('button', { name: /update node/i }));
+
+    expect(useModelStore.getState().nodes.find((n) => n.id === 'N2')?.x).toBeCloseTo(240, 10);
+  });
+
+  it('keeps an unsaved edit correct when the unit system changes mid-edit', async () => {
+    render(<NodeEditor />);
+    await userEvent.click(row('N2'));
+    await userEvent.clear(coordinateInputs().x);
+    await userEvent.type(coordinateInputs().x, '240');
+
+    act(() => useUIStore.setState({ unitSystem: 'metric' }));
+
+    // The draft is re-shown in metres rather than reinterpreted as 240 m.
+    expect(coordinateInputs().x).toHaveValue(6.096);
+    await userEvent.click(screen.getByRole('button', { name: /update node/i }));
+    expect(useModelStore.getState().nodes.find((n) => n.id === 'N2')?.x).toBeCloseTo(240, 10);
   });
 });
