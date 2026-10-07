@@ -5,57 +5,13 @@ import { useModelStore } from '../../store/model-store';
 import { useResultsStore } from '../../store/results-store';
 import { useUIStore } from '../../store/ui-store';
 import { sectionToShape } from './section-to-shape';
+import { memberOrientation } from './member-orientation';
+import { getElementHeatmapValue } from './heatmap-value';
 import { getSchemeColor, normalizeValue, getDesignColor } from '../../utils/color-ramp';
 
 interface ElementMeshProps {
   element: FrameElement;
   viewMode: string;
-}
-
-/** Compute heatmap value for an element based on the selected variable */
-function getElementHeatmapValue(
-  elementId: string,
-  variable: string,
-  analysisResults: ReturnType<typeof useResultsStore.getState>['analysisResults'],
-  designResults: ReturnType<typeof useResultsStore.getState>['designResults'],
-  nodeI: string,
-  nodeJ: string,
-  sectionA: number,
-  sectionSx: number,
-): number | null {
-  if (!analysisResults) return null;
-
-  switch (variable) {
-    case 'dc_ratio': {
-      const dr = designResults.find((r) => r.elementId === elementId);
-      return dr ? dr.ratio : null;
-    }
-    case 'displacement': {
-      const dispI = analysisResults.nodeDisplacements.get(nodeI);
-      const dispJ = analysisResults.nodeDisplacements.get(nodeJ);
-      if (!dispI || !dispJ) return null;
-      const magI = Math.sqrt(dispI[0] ** 2 + dispI[1] ** 2 + dispI[2] ** 2);
-      const magJ = Math.sqrt(dispJ[0] ** 2 + dispJ[1] ** 2 + dispJ[2] ** 2);
-      return (magI + magJ) / 2;
-    }
-    case 'axial_stress': {
-      const forces = analysisResults.elementForces.get(elementId);
-      if (!forces || sectionA === 0) return null;
-      const N = Math.abs(forces.startForces[0]);
-      return N / sectionA;
-    }
-    case 'combined_stress': {
-      const forces = analysisResults.elementForces.get(elementId);
-      if (!forces || sectionA === 0) return null;
-      const N = Math.abs(forces.startForces[0]);
-      const M = Math.abs(forces.startForces[4]); // M about strong axis
-      const axial = N / sectionA;
-      const bending = sectionSx > 0 ? M / sectionSx : 0;
-      return axial + bending;
-    }
-    default:
-      return null;
-  }
 }
 
 export function ElementMesh({ element, viewMode }: ElementMeshProps) {
@@ -105,6 +61,9 @@ export function ElementMesh({ element, viewMode }: ElementMeshProps) {
       bevelEnabled: false,
     });
 
+    // Extrusion runs along object Z and the profile's depth along object Y.
+    // rotateX(90 deg) moves them to object -Y and +Z, so the mesh orientation
+    // below maps object Y to local x and object Z (depth) to local y.
     geo.translate(0, 0, -elementGeometry.length / 2);
     geo.rotateX(Math.PI / 2);
 
@@ -156,12 +115,8 @@ export function ElementMesh({ element, viewMode }: ElementMeshProps) {
     }
   }
 
-  const { midpoint, direction, length } = elementGeometry;
-  const orientation = new THREE.Quaternion();
-  orientation.setFromUnitVectors(
-    new THREE.Vector3(0, 1, 0),
-    direction.clone().normalize()
-  );
+  const { midpoint, length } = elementGeometry;
+  const orientation = memberOrientation(nodeI, nodeJ, element.betaAngle);
 
   return (
     <mesh
