@@ -4,8 +4,17 @@
  */
 import DxfParser from 'dxf-parser';
 import type { StructuralNode, FrameElement } from '../core/types';
+import type { UnitSystem } from './units';
 
 export type DxfUnit = 'inches' | 'feet' | 'mm' | 'cm' | 'm';
+
+/**
+ * Drawing unit to assume for a DXF file before the user picks one. Metric
+ * CAD drawings are conventionally drawn in millimetres.
+ */
+export function defaultDxfUnit(system: UnitSystem): DxfUnit {
+  return system === 'metric' ? 'mm' : 'inches';
+}
 
 export interface DxfImportOptions {
   tolerance?: number;

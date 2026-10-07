@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import { importDxf } from '../../utils/dxf-import';
+import { importDxf, defaultDxfUnit } from '../../utils/dxf-import';
 import { importIfc } from '../../utils/ifc-import';
 import { useModelStore } from '../../store/model-store';
 import { useUIStore } from '../../store/ui-store';
@@ -12,16 +12,22 @@ export function DxfDropZone({ children }: { children: React.ReactNode }) {
   const [importResult, setImportResult] = useState<DxfImportResult | null>(null);
   const [ifcResult, setIfcResult] = useState<IfcImportResult | null>(null);
   const [fileName, setFileName] = useState('');
-  const [units, setUnits] = useState<DxfUnit>('inches');
+  // The drawing unit follows the app's unit system until the user picks one.
+  const [unitOverride, setUnitOverride] = useState<DxfUnit | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const dragCounter = useRef(0);
+  // Text of the DXF in the dialog, kept so a unit change can re-import it.
+  const dxfContent = useRef('');
 
   const bulkImport = useModelStore((s) => s.bulkImport);
   const bulkImportFull = useModelStore((s) => s.bulkImportFull);
   const setModelName = useUIStore((s) => s.setModelName);
+  const unitSystem = useUIStore((s) => s.unitSystem);
+  const units: DxfUnit = unitOverride ?? defaultDxfUnit(unitSystem);
 
   const handleDxfFile = useCallback(async (file: File) => {
     const content = await file.text();
+    dxfContent.current = content;
     const result = importDxf(content, { units });
     setImportResult(result);
     setFileName(file.name);
@@ -113,7 +119,11 @@ export function DxfDropZone({ children }: { children: React.ReactNode }) {
   };
 
   const handleUnitsChange = (newUnits: DxfUnit) => {
-    setUnits(newUnits);
+    setUnitOverride(newUnits);
+    // Coordinates are scaled at import time, so re-run it for the open file.
+    if (importResult && dxfContent.current) {
+      setImportResult(importDxf(dxfContent.current, { units: newUnits }));
+    }
   };
 
   return (
@@ -173,8 +183,9 @@ export function DxfDropZone({ children }: { children: React.ReactNode }) {
             )}
 
             <div className="flex items-center gap-2 mb-4">
-              <label className="text-xs text-slate-400">Units:</label>
+              <label className="text-xs text-slate-400" htmlFor="dxf-units">Units:</label>
               <select
+                id="dxf-units"
                 value={units}
                 onChange={(e) => handleUnitsChange(e.target.value as DxfUnit)}
                 className="bg-slate-700 text-xs text-slate-200 rounded px-2 py-1 border border-slate-600"

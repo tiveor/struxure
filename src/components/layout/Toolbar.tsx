@@ -331,6 +331,8 @@ export function Toolbar() {
             const blob = await generateReport(model, analysisResults, designResults, {
               ...opts,
               screenshot: screenshot ?? undefined,
+              // Read at generation time so a unit switch while the dialog is open still applies.
+              units: useUIStore.getState().unitSystem,
             });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');

@@ -12,13 +12,24 @@ import { newId } from '../../utils/id';
 import { extractAndValidateModel } from '../../utils/ai-model-validator';
 import { isProviderHost } from '../../utils/endpoint-host';
 import { ApiKeyField } from './ApiKeyField';
+import type { UnitSystem } from '../../utils/units';
 
-const EXAMPLE_PROMPTS = [
-  'Simple beam, 30ft span, 20 kip center load',
-  'Cantilever, 15ft, W12x26, 5 kip tip load',
-  'Portal frame, 2 stories, 3 bays, 20ft spans, 12ft height',
-  '3D building, 2x2 bays, 3 stories, fixed bases',
-];
+// Example prompts in the user's unit system. The metric set uses round
+// metric values, not literal conversions of the imperial ones.
+const EXAMPLE_PROMPTS: Record<UnitSystem, string[]> = {
+  imperial: [
+    'Simple beam, 30ft span, 20 kip center load',
+    'Cantilever, 15ft, W12x26, 5 kip tip load',
+    'Portal frame, 2 stories, 3 bays, 20ft spans, 12ft height',
+    '3D building, 2x2 bays, 3 stories, fixed bases',
+  ],
+  metric: [
+    'Simple beam, 9 m span, 90 kN center load',
+    'Cantilever, 4.5 m, W12x26, 22 kN tip load',
+    'Portal frame, 2 stories, 3 bays, 6 m spans, 3.6 m height',
+    '3D building, 2x2 bays, 3 stories, fixed bases',
+  ],
+};
 
 const tabs: { key: AiTab; label: string; icon: string }[] = [
   { key: 'local', label: 'Local', icon: 'computer' },
@@ -107,6 +118,7 @@ export function AiSidebar() {
 // ─── Chat Tab ────────────────────────────────────────────────
 
 function ChatTab({ provider }: { provider: AiProvider }) {
+  const unitSystem = useUIStore((s) => s.unitSystem);
   const messages = useChatStore((s) => provider === 'local' ? s.localMessages : s.onlineMessages);
   const addMessage = useChatStore((s) => s.addMessage);
   const updateMessage = useChatStore((s) => s.updateMessage);
@@ -272,7 +284,7 @@ function ChatTab({ provider }: { provider: AiProvider }) {
               <span className="material-icons-round text-slate-700 block mb-2 text-center" style={{ fontSize: '36px' }}>smart_toy</span>
               <p className="text-xs text-slate-500 text-center mb-3">Describe a structure</p>
               <div className="space-y-1.5">
-                {EXAMPLE_PROMPTS.map((p) => (
+                {EXAMPLE_PROMPTS[unitSystem].map((p) => (
                   <button
                     key={p}
                     onClick={() => { setInput(p); }}

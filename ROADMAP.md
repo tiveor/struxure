@@ -8,7 +8,7 @@ promised — dates are deliberately absent.
 The current feature set (see [README.md](README.md) and [CHANGELOG.md](CHANGELOG.md) for detail):
 
 - Interactive 3D [modeling](README.md#modeling) — nodes, elements, supports, and loads, with real-time Three.js visualization
-- Steel (A992) and concrete materials, with a searchable AISC section library (W, HSS, Pipe)
+- Steel (A992) and concrete materials, with a searchable AISC section library (W and rectangular HSS)
 - 8 built-in templates, from a simple beam to a 3D lattice tower
 - DXF import and IFC (BIM) import/export
 - Linear static [analysis](README.md#analysis) via the direct stiffness method, running in a cancellable Web Worker so the UI stays responsive
@@ -42,4 +42,4 @@ These are larger directions with open design questions rather than committed wor
 - No modal or dynamic analysis
 - No automated load combinations — combinations are built and analyzed manually
 - ~200 nodes recommended maximum; the solver factors a dense stiffness matrix rather than a sparse one
-- Model data is entered and stored in imperial units (kips, inches, ksi); the metric option only converts values for display
+- Models are stored and analyzed in imperial units (kips, inches, ksi). The metric option converts the editor inputs, tables, diagram labels, PDF report and CSV export, but saved JSON files carry no unit tag, the AI assistant works in imperial, and the libraries hold only ASTM materials and AISC shapes

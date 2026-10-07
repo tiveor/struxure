@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useModelStore } from '../../store/model-store';
 import { useUIStore } from '../../store/ui-store';
-import { unitLabel, toDisplay, fromDisplay } from '../../utils/units';
+import { unitLabel, formatQuantity } from '../../utils/units';
+import { QuantityInput } from '../shared/QuantityInput';
 import { MATERIAL_LIBRARY } from '../../utils/material-library';
 import type { LibraryMaterial } from '../../utils/material-library';
 import type { MaterialType } from '../../core/types';
@@ -22,7 +23,7 @@ export function MaterialEditor() {
 
   const [activeTab, setActiveTab] = useState<LibTab>('steel');
 
-  // Custom form state
+  // Custom form state, held in internal units (ksi)
   const [name, setName] = useState('');
   const [type, setType] = useState<MaterialType>('steel');
   const [E, setE] = useState(29000);
@@ -106,7 +107,7 @@ export function MaterialEditor() {
                   <div className="text-xs font-bold text-slate-200 leading-tight">{lib.name}</div>
                   <div className="text-[10px] text-slate-500 mt-0.5">{lib.category}</div>
                   <div className="text-[10px] font-mono text-accent mt-1">
-                    Fy={lib.fy} {unitLabel('stress', 'imperial')}
+                    Fy={formatQuantity(lib.fy ?? 0, 'stress', unitSystem, 0)} {unitLabel('stress', unitSystem)}
                   </div>
                   {alreadyAdded && (
                     <span className="text-[9px] text-accent font-bold">ADDED</span>
@@ -134,9 +135,14 @@ export function MaterialEditor() {
                   title={alreadyAdded ? 'Already in model' : `Add ${lib.name}`}
                 >
                   <div className="text-xs font-bold text-slate-200 leading-tight">{lib.name}</div>
-                  <div className="text-[10px] text-slate-500 mt-0.5">{lib.category}</div>
+                  {/* The category reads "4000 psi", so metric shows f'c in MPa instead. */}
+                  <div className="text-[10px] text-slate-500 mt-0.5">
+                    {unitSystem === 'imperial'
+                      ? lib.category
+                      : `f'c ${formatQuantity(lib.fc ?? 0, 'stress', unitSystem, 1)} ${unitLabel('stress', unitSystem)}`}
+                  </div>
                   <div className="text-[10px] font-mono text-accent mt-1">
-                    E={lib.E} {unitLabel('stress', 'imperial')}
+                    E={formatQuantity(lib.E, 'stress', unitSystem, 0)} {unitLabel('stress', unitSystem)}
                   </div>
                   {alreadyAdded && (
                     <span className="text-[9px] text-accent font-bold">ADDED</span>
@@ -163,24 +169,24 @@ export function MaterialEditor() {
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className={labelCls}>E ({unitLabel('stress', unitSystem)})</label>
-                <input type="number" className={numCls} value={+toDisplay(E, 'stress', unitSystem).toFixed(1)} onChange={(e) => setE(fromDisplay(+e.target.value, 'stress', unitSystem))} />
+                <label className={labelCls} htmlFor="material-E">E ({unitLabel('stress', unitSystem)})</label>
+                <QuantityInput id="material-E" className={numCls} qty="stress" unitSystem={unitSystem} value={E} onChange={setE} />
               </div>
               <div>
-                <label className={labelCls}>G ({unitLabel('stress', unitSystem)})</label>
-                <input type="number" className={numCls} value={+toDisplay(G, 'stress', unitSystem).toFixed(1)} onChange={(e) => setG(fromDisplay(+e.target.value, 'stress', unitSystem))} />
+                <label className={labelCls} htmlFor="material-G">G ({unitLabel('stress', unitSystem)})</label>
+                <QuantityInput id="material-G" className={numCls} qty="stress" unitSystem={unitSystem} value={G} onChange={setG} />
               </div>
             </div>
             {type === 'steel' && (
               <div>
-                <label className={labelCls}>Fy ({unitLabel('stress', unitSystem)})</label>
-                <input type="number" className={numCls} value={+toDisplay(fy, 'stress', unitSystem).toFixed(1)} onChange={(e) => setFy(fromDisplay(+e.target.value, 'stress', unitSystem))} />
+                <label className={labelCls} htmlFor="material-fy">Fy ({unitLabel('stress', unitSystem)})</label>
+                <QuantityInput id="material-fy" className={numCls} qty="stress" unitSystem={unitSystem} value={fy} onChange={setFy} />
               </div>
             )}
             {type === 'concrete' && (
               <div>
-                <label className={labelCls}>f'c ({unitLabel('stress', unitSystem)})</label>
-                <input type="number" className={numCls} value={+toDisplay(fc, 'stress', unitSystem).toFixed(2)} onChange={(e) => setFc(fromDisplay(+e.target.value, 'stress', unitSystem))} />
+                <label className={labelCls} htmlFor="material-fc">f'c ({unitLabel('stress', unitSystem)})</label>
+                <QuantityInput id="material-fc" className={numCls} qty="stress" unitSystem={unitSystem} value={fc} onChange={setFc} />
               </div>
             )}
             <button
@@ -213,7 +219,7 @@ export function MaterialEditor() {
                 <tr key={m.id} className="node-list-item hover:bg-slate-800 group transition-colors">
                   <td className="px-4 py-2 text-accent font-bold font-sans">{m.name}</td>
                   <td className="px-4 py-2 text-slate-400 capitalize font-sans">{m.type}</td>
-                  <td className="px-4 py-2 text-slate-400">{toDisplay(m.E, 'stress', unitSystem).toFixed(0)}</td>
+                  <td className="px-4 py-2 text-slate-400">{formatQuantity(m.E, 'stress', unitSystem, 0)}</td>
                   <td className="px-4 py-2">
                     <span
                       className="material-icons-round text-sm opacity-0 group-hover:opacity-100 cursor-pointer text-slate-400 hover:text-red-400"

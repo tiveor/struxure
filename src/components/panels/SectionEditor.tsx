@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useModelStore } from '../../store/model-store';
 import { useUIStore } from '../../store/ui-store';
-import { unitLabel, toDisplay, fromDisplay } from '../../utils/units';
+import { unitLabel, formatQuantity } from '../../utils/units';
+import { QuantityInput } from '../shared/QuantityInput';
 import { SectionPicker } from './SectionPicker';
 import { newId } from '../../utils/id';
 import type { ColumnReinforcement, Section } from '../../core/types';
@@ -33,6 +34,9 @@ export function SectionEditor() {
   const [Ix, setIx] = useState(100);
   const [Iy, setIy] = useState(50);
   const [J, setJ] = useState(5);
+  // Every dimension and property below is held in internal units (in, in^2,
+  // in^4, ksi) at full precision; QuantityInput only rounds what it shows,
+  // and a unit switch mid-edit re-renders the draft instead of reinterpreting it.
 
   // Rectangular concrete section, with optional column reinforcement.
   const [isRect, setIsRect] = useState(false);
@@ -103,12 +107,12 @@ export function SectionEditor() {
           {isRect ? (
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label htmlFor="sec-b" className={labelCls}>b ({unitLabel('length', unitSystem)})</label>
-                <input id="sec-b" type="number" min={0} className={numCls} value={+toDisplay(b, 'length', unitSystem).toFixed(2)} onChange={(e) => setB(fromDisplay(+e.target.value, 'length', unitSystem))} />
+                <label htmlFor="sec-b" className={labelCls}>b ({unitLabel('sectionDimension', unitSystem)})</label>
+                <QuantityInput id="sec-b" min={0} className={numCls} qty="sectionDimension" unitSystem={unitSystem} value={b} onChange={setB} />
               </div>
               <div>
-                <label htmlFor="sec-h" className={labelCls}>h ({unitLabel('length', unitSystem)})</label>
-                <input id="sec-h" type="number" min={0} className={numCls} value={+toDisplay(h, 'length', unitSystem).toFixed(2)} onChange={(e) => setH(fromDisplay(+e.target.value, 'length', unitSystem))} />
+                <label htmlFor="sec-h" className={labelCls}>h ({unitLabel('sectionDimension', unitSystem)})</label>
+                <QuantityInput id="sec-h" min={0} className={numCls} qty="sectionDimension" unitSystem={unitSystem} value={h} onChange={setH} />
               </div>
               <p className="col-span-2 text-[10px] leading-snug text-slate-500">
                 h is the depth for strong-axis bending. A, Ix, Iy and J are computed from b and h.
@@ -118,19 +122,19 @@ export function SectionEditor() {
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label htmlFor="sec-A" className={labelCls}>A ({unitLabel('area', unitSystem)})</label>
-                <input id="sec-A" type="number" className={numCls} value={+toDisplay(A, 'area', unitSystem).toFixed(2)} onChange={(e) => setA(fromDisplay(+e.target.value, 'area', unitSystem))} />
+                <QuantityInput id="sec-A" className={numCls} qty="area" unitSystem={unitSystem} value={A} onChange={setA} />
               </div>
               <div>
                 <label htmlFor="sec-Ix" className={labelCls}>Ix ({unitLabel('momentOfInertia', unitSystem)})</label>
-                <input id="sec-Ix" type="number" className={numCls} value={+toDisplay(Ix, 'momentOfInertia', unitSystem).toFixed(0)} onChange={(e) => setIx(fromDisplay(+e.target.value, 'momentOfInertia', unitSystem))} />
+                <QuantityInput id="sec-Ix" className={numCls} qty="momentOfInertia" unitSystem={unitSystem} value={Ix} onChange={setIx} />
               </div>
               <div>
                 <label htmlFor="sec-Iy" className={labelCls}>Iy ({unitLabel('momentOfInertia', unitSystem)})</label>
-                <input id="sec-Iy" type="number" className={numCls} value={+toDisplay(Iy, 'momentOfInertia', unitSystem).toFixed(0)} onChange={(e) => setIy(fromDisplay(+e.target.value, 'momentOfInertia', unitSystem))} />
+                <QuantityInput id="sec-Iy" className={numCls} qty="momentOfInertia" unitSystem={unitSystem} value={Iy} onChange={setIy} />
               </div>
               <div>
                 <label htmlFor="sec-J" className={labelCls}>J ({unitLabel('momentOfInertia', unitSystem)})</label>
-                <input id="sec-J" type="number" className={numCls} value={+toDisplay(J, 'momentOfInertia', unitSystem).toFixed(0)} onChange={(e) => setJ(fromDisplay(+e.target.value, 'momentOfInertia', unitSystem))} />
+                <QuantityInput id="sec-J" className={numCls} qty="momentOfInertia" unitSystem={unitSystem} value={J} onChange={setJ} />
               </div>
             </div>
           )}
@@ -165,12 +169,12 @@ export function SectionEditor() {
                   <input id="sec-bars-h" type="number" min={2} step={1} className={numCls} value={barsAlongH} onChange={(e) => setBarsAlongH(+e.target.value)} />
                 </div>
                 <div>
-                  <label htmlFor="sec-cover" className={labelCls}>Clear cover ({unitLabel('length', unitSystem)})</label>
-                  <input id="sec-cover" type="number" min={0} className={numCls} value={+toDisplay(cover, 'length', unitSystem).toFixed(2)} onChange={(e) => setCover(fromDisplay(+e.target.value, 'length', unitSystem))} />
+                  <label htmlFor="sec-cover" className={labelCls}>Clear cover ({unitLabel('sectionDimension', unitSystem)})</label>
+                  <QuantityInput id="sec-cover" min={0} className={numCls} qty="sectionDimension" unitSystem={unitSystem} value={cover} onChange={setCover} />
                 </div>
                 <div>
                   <label htmlFor="sec-rebar-fy" className={labelCls}>Rebar fy ({unitLabel('stress', unitSystem)})</label>
-                  <input id="sec-rebar-fy" type="number" min={0} className={numCls} value={+toDisplay(rebarFy, 'stress', unitSystem).toFixed(1)} onChange={(e) => setRebarFy(fromDisplay(+e.target.value, 'stress', unitSystem))} />
+                  <QuantityInput id="sec-rebar-fy" min={0} className={numCls} qty="stress" unitSystem={unitSystem} value={rebarFy} onChange={setRebarFy} />
                 </div>
               </div>
               <p className="text-[10px] leading-snug text-slate-500">
@@ -178,7 +182,7 @@ export function SectionEditor() {
               </p>
               {formErrors.length === 0 && (
                 <p className="text-[10px] text-slate-400">
-                  {totalBars(reinforcement)} bars, As = {toDisplay(totalSteelArea(reinforcement), 'area', unitSystem).toFixed(2)} {unitLabel('area', unitSystem)},
+                  {totalBars(reinforcement)} bars, As = {formatQuantity(totalSteelArea(reinforcement), 'area', unitSystem)} {unitLabel('area', unitSystem)},
                   {' '}rho = {((100 * totalSteelArea(reinforcement)) / (b * h)).toFixed(2)}%
                 </p>
               )}
@@ -209,8 +213,8 @@ export function SectionEditor() {
             <thead className="sticky top-0 bg-surface-1 shadow-sm">
               <tr className="text-[10px] font-bold text-slate-400 uppercase border-b border-slate-800">
                 <th className="px-4 py-2">Name</th>
-                <th className="px-4 py-2">A</th>
-                <th className="px-4 py-2">Ix</th>
+                <th className="px-4 py-2">A ({unitLabel('area', unitSystem)})</th>
+                <th className="px-4 py-2">Ix ({unitLabel('momentOfInertia', unitSystem)})</th>
                 <th className="px-4 py-2 w-10"></th>
               </tr>
             </thead>
@@ -223,8 +227,8 @@ export function SectionEditor() {
                       <span className="block text-[10px] font-normal text-slate-500">{describeReinforcement(s.reinforcement)}</span>
                     )}
                   </td>
-                  <td className="px-4 py-2 text-slate-400">{toDisplay(s.A, 'area', unitSystem).toFixed(2)}</td>
-                  <td className="px-4 py-2 text-slate-400">{toDisplay(s.Ix, 'momentOfInertia', unitSystem).toFixed(0)}</td>
+                  <td className="px-4 py-2 text-slate-400">{formatQuantity(s.A, 'area', unitSystem)}</td>
+                  <td className="px-4 py-2 text-slate-400">{formatQuantity(s.Ix, 'momentOfInertia', unitSystem, { imperial: 0 })}</td>
                   <td className="px-4 py-2">
                     <span
                       className="material-icons-round text-sm opacity-0 group-hover:opacity-100 cursor-pointer text-slate-400 hover:text-red-400"

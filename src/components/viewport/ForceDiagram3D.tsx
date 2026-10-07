@@ -10,6 +10,8 @@ import {
 } from '../../core/internal-forces-distribution';
 import type { ElementEndForces } from '../../core/internal-forces-distribution';
 import type { DiagramType } from '../../store/ui-store';
+import type { UnitSystem } from '../../utils/units';
+import { formatDiagramPeak } from './diagram-labels';
 
 const DIAGRAM_COLORS = {
   moment_M3: { pos: '#3b82f6', neg: '#ef4444' },
@@ -34,6 +36,7 @@ export function ForceDiagram3D() {
   const diagramType = useUIStore((s) => s.diagramType);
   const diagramScale = useUIStore((s) => s.diagramScale);
   const showDiagramValues = useUIStore((s) => s.showDiagramValues);
+  const unitSystem = useUIStore((s) => s.unitSystem);
 
   const diagramData = useMemo(() => {
     if (!analysisResults || diagramType === 'none') return null;
@@ -104,6 +107,7 @@ export function ForceDiagram3D() {
           scale={diagramScale}
           colors={colors}
           showValues={showDiagramValues}
+          unitSystem={unitSystem}
         />
       ))}
     </group>
@@ -119,10 +123,11 @@ interface ElementDiagramProps {
   scale: number;
   colors: { pos: string; neg: string };
   showValues: boolean;
+  unitSystem: UnitSystem;
 }
 
 function ElementDiagram({
-  points, start, end, component, globalMax, scale, colors, showValues,
+  points, start, end, component, globalMax, scale, colors, showValues, unitSystem,
 }: ElementDiagramProps) {
   const { geometry, maxPoint, maxWorldPos } = useMemo(() => {
     const direction = new THREE.Vector3().subVectors(end, start);
@@ -213,7 +218,7 @@ function ElementDiagram({
       {showValues && Math.abs(maxPoint[component]) > 0.01 && (
         <Html position={maxWorldPos} center zIndexRange={[5, 0]} style={{ pointerEvents: 'none' }}>
           <div className="bg-slate-900/90 px-1.5 py-0.5 rounded text-[10px] font-mono text-white whitespace-nowrap border border-slate-600">
-            {maxPoint[component].toFixed(1)}
+            {formatDiagramPeak(maxPoint[component], component, unitSystem)}
           </div>
         </Html>
       )}

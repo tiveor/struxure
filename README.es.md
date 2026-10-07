@@ -35,7 +35,7 @@ verificaciones estan contrastadas contra tablas publicadas y cuales no.
 ### Modelado
 - **Modelado 3D interactivo** — Crea y edita nodos, elementos, apoyos y cargas con visualizacion en tiempo real via Three.js
 - **Soporte multi-material** — Acero (A992) y concreto con propiedades completas
-- **Biblioteca de secciones AISC** — Base de datos de secciones W, HSS y Pipe con propiedades auto-completadas
+- **Biblioteca de secciones AISC** — Base de datos de secciones W y HSS rectangulares con propiedades auto-completadas
 - **8 plantillas integradas** — Viga simple, voladizo, portico, cercha Warren, arco parabolico, edificio 3D, Torre Eiffel (lattice 3D de 88 elementos) y Cristo de la Concordia (marco de estatua de 35 nodos con brazos)
 - **Importacion DXF** — Arrastra archivos `.dxf` de AutoCAD para importar geometria
 - **Importacion IFC (BIM)** — Arrastra archivos `.ifc` con estrategia dual: modelo analitico preferido, elementos fisicos como respaldo

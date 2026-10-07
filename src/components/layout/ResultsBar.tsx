@@ -15,6 +15,7 @@ export function ResultsBar() {
   const nodes = useModelStore((s) => s.nodes);
   const getModel = useModelStore((s) => s.getModel);
   const unitSystem = useUIStore((s) => s.unitSystem);
+  const modelName = useUIStore((s) => s.modelName);
   const [activeTab, setActiveTab] = useState<ResultTab>('shear');
 
   if (!isAnalyzed || !analysisResults) return null;
@@ -104,7 +105,7 @@ export function ResultsBar() {
   const maxBar = Math.max(...cfg.barData.map((d) => d.value), 1e-12);
 
   const handleExportCSV = () => {
-    exportResultsCSV(analysisResults, getModel());
+    exportResultsCSV(analysisResults, getModel(), modelName, unitSystem);
   };
 
   const tabs: { key: ResultTab; label: string }[] = [

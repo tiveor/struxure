@@ -1,16 +1,11 @@
 import { useState } from 'react';
 import { useModelStore } from '../../store/model-store';
 import { useUIStore } from '../../store/ui-store';
-import { unitLabel, toDisplay, fromDisplay } from '../../utils/units';
-import type { UnitSystem } from '../../utils/units';
+import { unitLabel, formatQuantity } from '../../utils/units';
+import { QuantityInput } from '../shared/QuantityInput';
 
 const inputCls = 'w-full bg-slate-900 border border-slate-700 rounded text-sm p-1.5 text-center font-mono text-slate-200 focus:ring-accent focus:border-accent';
 const labelCls = 'block text-[10px] font-semibold text-slate-500 mb-1 uppercase';
-
-/** Rounds a stored length to 4 decimals in the user's display units. */
-function toDisplayLength(v: number, unit: UnitSystem): number {
-  return +toDisplay(v, 'length', unit).toFixed(4);
-}
 
 function NodeForm() {
   const nodes = useModelStore((s) => s.nodes);
@@ -25,11 +20,13 @@ function NodeForm() {
 
   // This component is remounted via a `key` from its parent whenever the
   // selected node changes, so these initial values are re-derived per
-  // mount instead of being synced from an effect.
+  // mount instead of being synced from an effect. Coordinates are held in
+  // internal units (inches), so switching the unit system mid-edit only
+  // changes how the draft is shown, not what gets saved.
   const [newId, setNewId] = useState(selectedNode?.id ?? '');
-  const [x, setX] = useState(() => (selectedNode ? toDisplayLength(selectedNode.x, unitSystem) : 0));
-  const [y, setY] = useState(() => (selectedNode ? toDisplayLength(selectedNode.y, unitSystem) : 0));
-  const [z, setZ] = useState(() => (selectedNode ? toDisplayLength(selectedNode.z, unitSystem) : 0));
+  const [x, setX] = useState(selectedNode?.x ?? 0);
+  const [y, setY] = useState(selectedNode?.y ?? 0);
+  const [z, setZ] = useState(selectedNode?.z ?? 0);
 
   const handleAdd = () => {
     const id = newId || `N${nodes.length + 1}`;
@@ -37,23 +34,14 @@ function NodeForm() {
       alert(`Node "${id}" already exists`);
       return;
     }
-    addNode({
-      id,
-      x: fromDisplay(x, 'length', unitSystem),
-      y: fromDisplay(y, 'length', unitSystem),
-      z: fromDisplay(z, 'length', unitSystem),
-    });
+    addNode({ id, x, y, z });
     setNewId('');
     setX(0); setY(0); setZ(0);
   };
 
   const handleUpdate = () => {
     if (!selectedNode) return;
-    updateNode(selectedNode.id, {
-      x: fromDisplay(x, 'length', unitSystem),
-      y: fromDisplay(y, 'length', unitSystem),
-      z: fromDisplay(z, 'length', unitSystem),
-    });
+    updateNode(selectedNode.id, { x, y, z });
   };
 
   const handleDelete = () => {
@@ -112,29 +100,32 @@ function NodeForm() {
         <div className="grid grid-cols-3 gap-2">
           <div>
             <label className={labelCls}>X ({unitLabel('length', unitSystem)})</label>
-            <input
+            <QuantityInput
               className={inputCls}
-              type="number"
+              qty="length"
+              unitSystem={unitSystem}
               value={x}
-              onChange={(e) => setX(parseFloat(e.target.value) || 0)}
+              onChange={setX}
             />
           </div>
           <div>
             <label className={labelCls}>Y ({unitLabel('length', unitSystem)})</label>
-            <input
+            <QuantityInput
               className={inputCls}
-              type="number"
+              qty="length"
+              unitSystem={unitSystem}
               value={y}
-              onChange={(e) => setY(parseFloat(e.target.value) || 0)}
+              onChange={setY}
             />
           </div>
           <div>
             <label className={labelCls}>Z ({unitLabel('length', unitSystem)})</label>
-            <input
+            <QuantityInput
               className={inputCls}
-              type="number"
+              qty="length"
+              unitSystem={unitSystem}
               value={z}
-              onChange={(e) => setZ(parseFloat(e.target.value) || 0)}
+              onChange={setZ}
             />
           </div>
         </div>
@@ -179,7 +170,7 @@ export function NodeEditor() {
             <thead className="sticky top-0 bg-surface-1 shadow-sm">
               <tr className="text-[10px] font-bold text-slate-400 uppercase border-b border-slate-800">
                 <th className="px-4 py-2 w-12">ID</th>
-                <th className="px-4 py-2">Coordinates (X, Y, Z)</th>
+                <th className="px-4 py-2">Coordinates (X, Y, Z) ({unitLabel('length', unitSystem)})</th>
                 <th className="px-4 py-2 w-10"></th>
               </tr>
             </thead>
@@ -195,7 +186,7 @@ export function NodeEditor() {
                     onClick={() => selectNode(isSelected ? null : node.id)}
                   >
                     <td className="px-4 py-2 text-accent font-bold">{node.id}</td>
-                    <td className="px-4 py-2 text-slate-400">({toDisplay(node.x, 'length', unitSystem).toFixed(1)}, {toDisplay(node.y, 'length', unitSystem).toFixed(1)}, {toDisplay(node.z, 'length', unitSystem).toFixed(1)})</td>
+                    <td className="px-4 py-2 text-slate-400">({formatQuantity(node.x, 'length', unitSystem, { imperial: 1 })}, {formatQuantity(node.y, 'length', unitSystem, { imperial: 1 })}, {formatQuantity(node.z, 'length', unitSystem, { imperial: 1 })})</td>
                     <td className="px-4 py-2">
                       <span
                         className="material-icons-round text-sm opacity-0 group-hover:opacity-100 cursor-pointer text-slate-400 hover:text-red-400"
