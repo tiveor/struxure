@@ -42,6 +42,35 @@ export interface Section {
   tw?: number;     // Web thickness
   b?: number;      // Width (concrete)
   h?: number;      // Height (concrete)
+  /**
+   * Longitudinal reinforcement of a rectangular concrete section (b x h).
+   * Optional: without it the ACI column check falls back to an indicative
+   * screening estimate.
+   */
+  reinforcement?: ColumnReinforcement;
+}
+
+/**
+ * Perimeter reinforcement of a rectangular b x h concrete section.
+ *
+ * `barsAlongB` bars sit along each of the two faces of width b and
+ * `barsAlongH` along each of the two faces of depth h. Both counts include
+ * the corner bars, so there are 2*barsAlongB + 2*barsAlongH - 4 bars, all of
+ * one size, symmetric about both axes.
+ */
+export interface ColumnReinforcement {
+  /** Clear cover from the concrete face to the ties (in) */
+  cover: number;
+  /** Longitudinal bar designation, 3 to 11 (#3 to #11) */
+  barSize: number;
+  /** Bars along each face of width b, corners included (>= 2) */
+  barsAlongB: number;
+  /** Bars along each face of depth h, corners included (>= 2) */
+  barsAlongH: number;
+  /** Tie bar designation, 3 to 5 (#3 to #5) */
+  tieSize: number;
+  /** Rebar yield strength (ksi); 60 when omitted */
+  fy?: number;
 }
 
 /** Frame element connecting two nodes */

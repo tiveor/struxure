@@ -59,7 +59,7 @@ verified against published tables and which are not.
 
 ### Design Checks
 - **AISC 360 (Steel)** — Tension (Ch. D), Compression (Ch. E), Flexure (Ch. F), Combined P-M interaction (Ch. H)
-- **ACI 318 (Concrete)** — Beam flexure (Whitney block), Shear (Vc + Vs), Columns (simplified P-M interaction)
+- **ACI 318 (Concrete)** — Beam flexure (Whitney block), Shear (Vc + Vs), Columns (strain-compatibility P-M interaction from the section's bars, or an indicative 1% screening estimate when no bars are defined)
 - **D/C ratio visualization** — Elements color-coded by demand/capacity ratio
 
 ### Export

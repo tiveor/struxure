@@ -55,13 +55,22 @@ export function runDesign(
       );
       designResults.push(result);
     } else if (material.type === 'concrete') {
+      // Statically consistent (P, Mz, My) pairs at each end for the
+      // reinforced column check. The element end forces are the forces the
+      // nodes exert on the element in local axes, so a compressed member has
+      // startForces[0] > 0 and endForces[0] < 0.
+      const columnDemands = [
+        { P: forces.startForces[0], Mx: forces.startForces[5], My: forces.startForces[4] },
+        { P: -forces.endForces[0], Mx: forces.endForces[5], My: forces.endForces[4] },
+      ];
       const result = designConcreteElement(
         elem.id,
         maxAxial,
         maxShear,
         maxMoment,
         material,
-        section
+        section,
+        columnDemands
       );
       designResults.push(result);
     }

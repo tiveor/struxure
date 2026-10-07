@@ -122,6 +122,10 @@ You can add custom materials in the **Materials** tab.
 The model ships with **W12x26** as the default section. You can:
 
 - Add custom sections in the **Sections** tab (by entering A, Ix, Iy, J)
+- Add a rectangular concrete section (b x h) and, for columns, its
+  reinforcement: bar size (#3 to #11), bars per face, tie size, clear cover
+  and rebar fy. Columns with reinforcement get a full ACI 318 P-M check;
+  without it their D/C ratio is an indicative estimate
 - Use the template's sections (W12x26 for beams, W10x49 for columns)
 
 ## Exporting results
@@ -147,7 +151,7 @@ The model ships with **W12x26** as the default section. You can:
 |--------------|---------------------------------------------|
 | Beam flexure | Required As (Whitney stress block)          |
 | Beam shear   | Vu ≤ φ(Vc + Vs), stirrups required          |
-| Columns      | Simplified P-M interaction diagram          |
+| Columns      | P-M interaction by strain compatibility from the section's bars; without bars, an indicative screening estimate (marked †) |
 
 ## Useful commands
 

@@ -1,7 +1,16 @@
 import type { StructuralModel, AnalysisResults } from '../core/types';
 
+/**
+ * Serialize a model for a saved `.json` file. Every field is written as is,
+ * including optional ones such as a section's `reinforcement`, so
+ * `validateModelJson` reads back the same model.
+ */
+export function modelToJson(model: StructuralModel): string {
+  return JSON.stringify(model, null, 2);
+}
+
 export function exportModelJSON(model: StructuralModel, modelName?: string): void {
-  const json = JSON.stringify(model, null, 2);
+  const json = modelToJson(model);
   const blob = new Blob([json], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');

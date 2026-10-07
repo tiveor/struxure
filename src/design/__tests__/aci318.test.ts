@@ -2,8 +2,11 @@ import { describe, it, expect } from 'vitest';
 import type { Material, Section } from '../../core/types';
 import { checkFlexure } from '../aci318/flexure';
 import { checkShear } from '../aci318/shear';
-import { checkColumn, ASSUMED_COLUMN_RHO } from '../aci318/columns';
+import { checkColumn, checkReinforcedColumn, ASSUMED_COLUMN_RHO } from '../aci318/columns';
 import { designConcreteElement } from '../aci318';
+import { runDesign } from '../design-runner';
+import { solveModel } from '../../core/solver';
+import type { ColumnReinforcement, StructuralModel } from '../../core/types';
 
 /**
  * Validation tests for the ACI 318 checks.
@@ -270,6 +273,8 @@ describe('ACI 318 — element dispatch', () => {
     const r = designConcreteElement('E2', 200, 20, 1200, C4000, BEAM_12x24);
     expect(r.indicative).toBeDefined();
     expect(r.indicative?.reason).toMatch(/1% steel/);
+    // Issue #25: the reason tells the user how to get a full check.
+    expect(r.indicative?.reason).toMatch(/define the section reinforcement/i);
   });
 
   it('does not flag a beam result as indicative', () => {
@@ -283,5 +288,69 @@ describe('ACI 318 — element dispatch', () => {
     expect(r.status).toBe(r.ratio <= 1.0 ? 'pass' : 'fail');
     expect(r.material).toBe('concrete');
     expect(r.elementId).toBe('E3');
+  });
+});
+
+describe('ACI 318 — reinforced column dispatch', () => {
+  // 16x16, 8 #8, #3 ties, 1.5 in cover: the Example A section of
+  // aci318-interaction.test.ts, where its diagram is validated by hand.
+  const REINF: ColumnReinforcement = { cover: 1.5, barSize: 8, barsAlongB: 3, barsAlongH: 3, tieSize: 3 };
+  const COL_R: Section & { b: number; h: number; reinforcement: ColumnReinforcement } = {
+    id: 'C16R', name: '16x16 8#8', A: 256, Ix: 5461.33, Iy: 5461.33, J: 9000,
+    b: 16, h: 16, reinforcement: REINF,
+  };
+
+  it('uses the strain-compatibility diagram and is not indicative', () => {
+    const r = designConcreteElement('E9', 300, 10, 1200, C4000, COL_R);
+    expect(r.indicative).toBeUndefined();
+    expect(r.ratio).toBeCloseTo(
+      checkReinforcedColumn([{ P: 300, Mx: 1200, My: 0 }], C4000, COL_R).ratio,
+      12
+    );
+    expect(r.status).toBe(r.ratio <= 1 ? 'pass' : 'fail');
+  });
+
+  it('reports As and rho provided instead of an assumed ratio', () => {
+    const r = designConcreteElement('E9', 300, 10, 1200, C4000, COL_R);
+    expect(r.details).toHaveProperty('AsProvided');
+    expect((r.details as { AsProvided: number }).AsProvided).toBeCloseTo(6.32, 10);
+    expect((r.details as { rhoProvided: number }).rhoProvided).toBeCloseTo(6.32 / 256, 10);
+    expect(r.details).not.toHaveProperty('rhoAssumed');
+    expect(r.details).not.toHaveProperty('AsRequired');
+  });
+
+  it('keeps the screening path when the reinforcement is invalid', () => {
+    const bad = { ...COL_R, reinforcement: { ...REINF, barsAlongB: 1 } };
+    const r = designConcreteElement('E9', 300, 10, 1200, C4000, bad);
+    expect(r.indicative).toBeDefined();
+  });
+
+  it('takes the governing end and the weak-axis moment from per-end demands', () => {
+    const one = designConcreteElement('E9', 300, 10, 1200, C4000, COL_R, [
+      { P: 300, Mx: 1200, My: 0 },
+    ]).ratio;
+    const both = designConcreteElement('E9', 300, 10, 1200, C4000, COL_R, [
+      { P: 300, Mx: 1200, My: 0 },
+      { P: 300, Mx: 1200, My: 400 },
+    ]).ratio;
+    expect(both).toBeGreaterThan(one);
+  });
+
+  it('reads compression as positive from the solver end forces', () => {
+    // Cantilever column 120 in tall, 300 kips down and 5 kips sideways at the
+    // top. Base: P = 300 kips compression, Mz = 5 * 120 = 600 kip-in.
+    const model: StructuralModel = {
+      nodes: [{ id: 'A', x: 0, y: 0, z: 0 }, { id: 'B', x: 0, y: 120, z: 0 }],
+      materials: [C4000],
+      sections: [COL_R],
+      elements: [{ id: 'COL', nodeI: 'A', nodeJ: 'B', materialId: C4000.id, sectionId: COL_R.id, betaAngle: 0 }],
+      supports: [{ nodeId: 'A', dx: true, dy: true, dz: true, rx: true, ry: true, rz: true }],
+      nodalLoads: [{ id: 'L', nodeId: 'B', fx: 5, fy: -300, fz: 0, mx: 0, my: 0, mz: 0 }],
+      distributedLoads: [],
+    };
+    const [r] = runDesign(model, solveModel(model));
+    const expected = checkReinforcedColumn([{ P: 300, Mx: 600, My: 0 }], C4000, COL_R).ratio;
+    expect(r.ratio).toBeCloseTo(expected, 3);
+    expect(r.indicative).toBeUndefined();
   });
 });
