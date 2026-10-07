@@ -76,7 +76,7 @@ function solvePipeline(model: StructuralModel) {
   // Step 5: Post-process
   self.postMessage({ type: 'progress', step: 'postprocess', progress: 0.8 } satisfies WorkerResponse);
   const results = postProcess(
-    model, displacements, K, nodeIndexMap,
+    model, displacements, K, F, nodeIndexMap,
     elementTransformations, elementLocalStiffness, restrainedDofs,
   );
 

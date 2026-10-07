@@ -46,13 +46,14 @@ const element = (id: string, nodeI: string, nodeJ: string) => ({
 
 /** Run postProcess on hand-written displacements, given per node as [ux..rz]. */
 function run(model: StructuralModel, u: Record<string, number[]>) {
-  const { K, nodeIndexMap, elementTransformations, elementLocalStiffness } =
+  const { K, F, nodeIndexMap, elementTransformations, elementLocalStiffness } =
     assembleGlobalSystem(model);
   const displacements = model.nodes.flatMap((n) => u[n.id] ?? [0, 0, 0, 0, 0, 0]);
   return postProcess(
     model,
     displacements,
     K,
+    F,
     nodeIndexMap,
     elementTransformations,
     elementLocalStiffness,
@@ -244,14 +245,10 @@ describe('postProcess - simply supported beam with a uniform load', () => {
     expect(endForces[5]).toBeCloseTo(0, 6);
   });
 
-  // Skipped on purpose: this exposes a bug in post-processor.ts, reported
-  // separately and not fixed here. Reactions are computed as K*u minus the
-  // applied *nodal* loads only. The equivalent nodal loads of distributed
-  // loads are added to F by the assembler but never subtracted here, so any
-  // distributed load on an element framing into a support is missing from
-  // that support's reaction. For this beam postProcess (and solveModel)
-  // report R_A = R_B = 0 instead of w L / 2 = 60 kips, and sum Fy = -120.
-  it.skip('gives R_A = R_B = w L / 2 = 60 kips', () => {
+  // Regression: reactions used to subtract only the applied nodal loads from
+  // K * u, so the equivalent nodal loads of a member load never reached the
+  // supports and this beam reported R_A = R_B = 0 with sum Fy = -120.
+  it('gives R_A = R_B = w L / 2 = 60 kips', () => {
     expect(results.reactions.get('A')![1]).toBeCloseTo(60, 8);
     expect(results.reactions.get('B')![1]).toBeCloseTo(60, 8);
     // Sum Fy: 60 + 60 - w L = 0.

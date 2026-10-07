@@ -54,8 +54,9 @@ read independently.
    hand off to post-processing.
 
 6. **`src/core/post-processor.ts`** (`postProcess`) computes per-node
-   displacements, support reactions (`R = K·u`, restricted to restrained
-   DOFs and adjusted for applied nodal loads), and per-element internal
+   displacements, support reactions (`R = K·u − F`, restricted to restrained
+   DOFs, where `F` is the same load vector the solver used: nodal loads
+   plus the equivalent nodal loads of member loads), and per-element internal
    forces, returning an `AnalysisResults` object.
 
 6. Result flows into **`src/store/results-store.ts`**, which the viewport

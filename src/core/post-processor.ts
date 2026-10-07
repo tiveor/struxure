@@ -6,11 +6,17 @@ import { fixedEndForces } from './local-stiffness';
 
 /**
  * Post-process analysis results: compute reactions and internal forces.
+ *
+ * `F_global` must be the same equivalent nodal load vector the system was
+ * solved against (see `assembleLoadVector`): applied nodal loads plus the
+ * fixed-end equivalents of member loads, in global axes. Reactions are
+ * R = K · u - F at the restrained DOFs.
  */
 export function postProcess(
   model: StructuralModel,
   displacements: number[],
   K_global: Matrix,
+  F_global: Matrix,
   nodeIndexMap: Map<string, number>,
   elementTransformations: Map<string, Matrix>,
   elementLocalStiffness: Map<string, Matrix>,
@@ -26,10 +32,12 @@ export function postProcess(
     nodeDisplacements.set(node.id, displacements.slice(baseDof, baseDof + DOF_PER_NODE));
   }
 
-  // Reactions at supports: R = K * u - F_applied (for restrained DOFs)
+  // Reactions at supports: R = K * u - F (for restrained DOFs). F includes the
+  // equivalent nodal loads of member loads, so a load on an element framing
+  // into a support reaches that support's reaction.
   const reactions = new Map<string, number[]>();
   const u_vec = Matrix.columnVector(displacements);
-  const R_full = K_global.mmul(u_vec);
+  const R_full = K_global.mmul(u_vec).sub(F_global);
 
   for (const support of supports) {
     const nodeIdx = nodeIndexMap.get(support.nodeId)!;
@@ -43,17 +51,6 @@ export function postProcess(
       }
     }
     reactions.set(support.nodeId, r);
-  }
-
-  // Subtract applied nodal loads from reactions
-  for (const load of model.nodalLoads) {
-    const r = reactions.get(load.nodeId);
-    if (r) {
-      const forces = [load.fx, load.fy, load.fz, load.mx, load.my, load.mz];
-      for (let d = 0; d < DOF_PER_NODE; d++) {
-        r[d] -= forces[d];
-      }
-    }
   }
 
   // Internal forces per element
