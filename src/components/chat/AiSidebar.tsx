@@ -11,6 +11,7 @@ import { SYSTEM_PROMPT, buildUserMessage } from '../../utils/ai-system-prompt';
 import { newId } from '../../utils/id';
 import { extractAndValidateModel } from '../../utils/ai-model-validator';
 import { isProviderHost } from '../../utils/endpoint-host';
+import { ApiKeyField } from './ApiKeyField';
 
 const EXAMPLE_PROMPTS = [
   'Simple beam, 30ft span, 20 kip center load',
@@ -498,12 +499,8 @@ function SettingsOnlinePanel() {
         onChange={(v) => updateSettings({ onlineEndpoint: v })}
         placeholder="https://api.groq.com/openai/v1/chat/completions"
       />
-      <SettingsInput
-        label="API Key"
-        value={settings.onlineApiKey}
-        onChange={(v) => updateSettings({ onlineApiKey: v })}
+      <ApiKeyField
         placeholder={settings.onlineEndpoint.includes('groq') ? 'gsk_...' : settings.onlineEndpoint.includes('openrouter') ? 'sk-or-...' : 'sk-...'}
-        type="password"
       />
       <SettingsInput
         label="Model"
@@ -521,7 +518,7 @@ function SettingsOnlinePanel() {
       />
       <TestConnectionButton testing={onlineTest.testing} result={onlineTest.result} onTest={handleTestOnline} endpoint={settings.onlineEndpoint} />
       <p className="text-[10px] text-slate-600 pt-1">
-        Works with OpenRouter, Together, Groq, OpenAI, or any OpenAI-compatible API. Your key is stored locally.
+        Works with OpenRouter, Together, Groq, OpenAI, or any OpenAI-compatible API. Your key is sent only to the endpoint above.
       </p>
     </div>
   );
