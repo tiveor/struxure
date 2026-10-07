@@ -61,7 +61,8 @@ validated.
 | Global assembly (`assembler.ts`) | Validated: two collinear elements sum at the shared node term by term, an inclined element matches the closed-form plane-frame global matrix, and nodal and uniform-load equivalent forces land on the right DOFs |
 | Boundary conditions (`boundary-conditions.ts`) | Validated: DOF numbering of restraints, free/restrained partition, and the reduced cantilever system solved against PL³/3EI and PL²/2EI |
 | Matrix helpers (`matrix-utils.ts`) | Validated against hand-worked products, the plane truss bar Tᵀ·k·T, and direct-stiffness scatter of two springs |
-| Post-processing (`post-processor.ts`) | Validated for nodal loads: reactions and member end forces of a determinate cantilever and simply supported beam from closed-form displacements, with ΣF = 0 and ΣM = 0. **Reactions under distributed loads are wrong**, see below |
+| Post-processing (`post-processor.ts`) | Validated: reactions and member end forces of a determinate cantilever and simply supported beam under nodal loads, and of a simply supported beam under a uniform load (R = wL/2), from closed-form displacements, with ΣF = 0 and ΣM = 0. Reactions are K·u minus the full equivalent nodal load vector, member loads included |
+| Support reactions under member loads (`reactions-member-loads.test.ts`) | Validated through `solveModel` against AISC Manual Table 3-23 for a uniform load on a simple beam (R = wL/2), a cantilever (R = wL, M = wL²/2) and a propped cantilever (R = 5wL/8 and 3wL/8, M = wL²/8), plus hand statics for an inclined beam with perpendicular and axial loads, weak-axis and axial loads on a cantilever, and mixed nodal and member loads. Every case checks ΣF = 0 and ΣM = 0 with the member loads included |
 
 End-to-end coverage is not a substitute for these: a sign error
 in the weak-axis coupling term of the local stiffness matrix passes the entire
@@ -71,16 +72,10 @@ a result.
 
 ### Known open defects in the analysis engine
 
-Two defects surfaced while validating the core modules in isolation. Each is
+One defect surfaced while validating the core modules in isolation. It is
 pinned by a skipped test that states the correct expectation, so it can be
 enabled once the fix lands.
 
-- **Support reactions omit distributed loads** (`post-processor.ts`).
-  Reactions are computed as K·u minus the applied nodal loads only, so the
-  equivalent nodal loads of a distributed load on an element framing into a
-  support never reach that support's reaction. A simply supported beam with
-  1 kip/in over 120 in reports R = 0 at both ends instead of 60 kips.
-  Displacements and member end forces are correct.
 - **Local axes jump near vertical** (`transformation.ts`). Members within
   about 2.56° of global Y switch to a different local y/z convention, so two
   members tilted 87° and 88° from horizontal in the XY plane bend in plane
