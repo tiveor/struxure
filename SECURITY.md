@@ -26,21 +26,36 @@ browser unregisters it.
 
 ## Known risks
 
-### AI Assistant API keys are stored in localStorage
+### AI Assistant API keys
 
-When the AI Assistant is configured with an online provider, the API key is
-persisted in browser `localStorage` under the key `struxure-ai-settings`
-(`src/store/chat-store.ts`). It is sent only to the endpoint the user configures.
+The AI Assistant defaults to a local provider such as LM Studio, which needs no
+key. When an online provider is configured, its API key is sent only to the
+endpoint the user enters. Where the key is kept is a choice under
+**AI Assistant → Settings → Online → Key storage**:
 
-`localStorage` is readable by any script running on the same origin. If a
-malicious dependency or a cross-site scripting flaw were introduced, the key
-could be exfiltrated.
+| Option | Storage | Lifetime |
+| --- | --- | --- |
+| This tab only (default) | `sessionStorage`, key `struxure-ai-key` | Until the tab closes |
+| Remember on this device | `localStorage`, key `struxure-ai-key` | Until the user clears it |
+| Don't store | Memory only | Until the page reloads |
 
-**Recommendation:** prefer a local provider such as LM Studio, which needs no
-key. If you use an online provider, scope the key as narrowly as the provider
-allows and rotate it if you use Struxure on a shared machine.
+Other AI settings (endpoints, model names, temperature and the chosen key
+storage option) are not secret and stay in `localStorage` under
+`struxure-ai-settings`. The key is never written there. Switching options
+removes the key from the storage it leaves, and clearing the field removes it
+from storage entirely (`src/store/chat-store.ts`).
 
-This is tracked publicly and contributions are welcome.
+**Migration.** Earlier versions stored the key in plaintext inside
+`struxure-ai-settings` in `localStorage`. On first load after upgrading, that
+key is moved to the default (this tab only) and deleted from `localStorage`.
+It keeps working for the current session; users who want it remembered must
+opt in again. Struxure does not assume the old behavior was a choice.
+
+**Remaining risk.** Any script running on the same origin can read the key
+in every mode, including from memory. A malicious dependency or a cross-site
+scripting flaw could exfiltrate it. The settings panel says so where the key
+is entered. Scope the key as narrowly as the provider allows, avoid
+"Remember on this device" on shared machines, and rotate the key if in doubt.
 
 ### Model files are loaded without schema validation
 
