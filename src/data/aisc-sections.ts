@@ -1,14 +1,14 @@
 /**
  * AISC Steel Section Database
  * Source: AISC Steel Construction Manual, 16th Ed.
- * Contains W-shapes, HSS rectangular, and Pipe sections.
+ * Contains W-shapes and rectangular/square HSS. There are no Pipe sections yet.
  *
  * See NOTICE for the standards attribution and disclaimer.
  */
 
 export interface AISCSection {
   name: string;
-  type: 'W' | 'HSS' | 'Pipe';
+  type: 'W' | 'HSS';
   d: number;    // Depth (in)
   bf: number;   // Flange width (in)
   tf: number;   // Flange thickness (in)

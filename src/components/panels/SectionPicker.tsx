@@ -1,14 +1,21 @@
 import { useState, useMemo } from 'react';
 import { AISC_SECTIONS, searchSections, aiscToSection } from '../../data/aisc-sections';
 import { useModelStore } from '../../store/model-store';
+import { useUIStore } from '../../store/ui-store';
+import { unitLabel, formatQuantity } from '../../utils/units';
 import type { AISCSection } from '../../data/aisc-sections';
+
+// One filter per shape family that the library actually contains.
+const TYPE_FILTERS = ['all', 'W', 'HSS'] as const;
+type TypeFilter = (typeof TYPE_FILTERS)[number];
 
 export function SectionPicker({ onClose }: { onClose: () => void }) {
   const addSection = useModelStore((s) => s.addSection);
   const sections = useModelStore((s) => s.sections);
+  const unitSystem = useUIStore((s) => s.unitSystem);
 
   const [query, setQuery] = useState('');
-  const [typeFilter, setTypeFilter] = useState<'all' | 'W' | 'HSS' | 'Pipe'>('all');
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
 
   const filteredSections = useMemo(() => {
     let results = query ? searchSections(query) : AISC_SECTIONS;
@@ -47,7 +54,7 @@ export function SectionPicker({ onClose }: { onClose: () => void }) {
           autoFocus
         />
         <div className="flex gap-1">
-          {(['all', 'W', 'HSS', 'Pipe'] as const).map((t) => (
+          {TYPE_FILTERS.map((t) => (
             <button
               key={t}
               className={`px-2 py-0.5 text-[10px] font-bold rounded cursor-pointer transition-colors ${
@@ -71,11 +78,11 @@ export function SectionPicker({ onClose }: { onClose: () => void }) {
           <thead className="sticky top-0 bg-surface-1 shadow-sm">
             <tr className="text-[10px] font-bold text-slate-400 uppercase border-b border-slate-800">
               <th className="px-3 py-1.5">Section</th>
-              <th className="px-2 py-1.5 text-right">d</th>
-              <th className="px-2 py-1.5 text-right">bf</th>
-              <th className="px-2 py-1.5 text-right">A</th>
-              <th className="px-2 py-1.5 text-right">Ix</th>
-              <th className="px-2 py-1.5 text-right">wt</th>
+              <th className="px-2 py-1.5 text-right">d ({unitLabel('sectionDimension', unitSystem)})</th>
+              <th className="px-2 py-1.5 text-right">bf ({unitLabel('sectionDimension', unitSystem)})</th>
+              <th className="px-2 py-1.5 text-right">A ({unitLabel('area', unitSystem)})</th>
+              <th className="px-2 py-1.5 text-right">Ix ({unitLabel('momentOfInertia', unitSystem)})</th>
+              <th className="px-2 py-1.5 text-right">wt ({unitLabel('weightPerLength', unitSystem)})</th>
             </tr>
           </thead>
           <tbody className="text-xs font-mono divide-y divide-slate-800/50">
@@ -92,11 +99,11 @@ export function SectionPicker({ onClose }: { onClose: () => void }) {
                   onClick={() => !exists && handleSelect(s)}
                 >
                   <td className="px-3 py-1.5 text-accent font-bold font-sans text-xs">{s.name}</td>
-                  <td className="px-2 py-1.5 text-right text-slate-400">{s.d.toFixed(1)}</td>
-                  <td className="px-2 py-1.5 text-right text-slate-400">{s.bf.toFixed(1)}</td>
-                  <td className="px-2 py-1.5 text-right text-slate-300">{s.A.toFixed(1)}</td>
-                  <td className="px-2 py-1.5 text-right text-slate-400">{s.Ix.toFixed(0)}</td>
-                  <td className="px-2 py-1.5 text-right text-slate-500">{s.weight}</td>
+                  <td className="px-2 py-1.5 text-right text-slate-400">{formatQuantity(s.d, 'sectionDimension', unitSystem, { imperial: 1, metric: 0 })}</td>
+                  <td className="px-2 py-1.5 text-right text-slate-400">{formatQuantity(s.bf, 'sectionDimension', unitSystem, { imperial: 1, metric: 0 })}</td>
+                  <td className="px-2 py-1.5 text-right text-slate-300">{formatQuantity(s.A, 'area', unitSystem, { imperial: 1 })}</td>
+                  <td className="px-2 py-1.5 text-right text-slate-400">{formatQuantity(s.Ix, 'momentOfInertia', unitSystem, { imperial: 0 })}</td>
+                  <td className="px-2 py-1.5 text-right text-slate-500">{unitSystem === 'imperial' ? s.weight : formatQuantity(s.weight, 'weightPerLength', unitSystem)}</td>
                 </tr>
               );
             })}
