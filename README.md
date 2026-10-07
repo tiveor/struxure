@@ -35,7 +35,7 @@ verified against published tables and which are not.
 ### Modeling
 - **Interactive 3D modeling** — Create and edit nodes, elements, supports, and loads with real-time visualization via Three.js
 - **Multi-material support** — Steel (A992) and concrete with full property definitions
-- **AISC section library** — Searchable database of W, HSS, and Pipe sections with auto-populated properties
+- **AISC section library** — Searchable database of W and rectangular HSS sections with auto-populated properties
 - **8 built-in templates** — Simple beam, cantilever, portal frame, Warren truss, parabolic arch, 3D building, and Eiffel Tower (88-element 3D lattice)
 - **DXF import** — Drag-and-drop AutoCAD `.dxf` files to import geometry
 - **IFC (BIM) import** — Drag-and-drop `.ifc` files with dual strategy: analytical model preferred, physical elements fallback
