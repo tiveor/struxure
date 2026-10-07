@@ -42,4 +42,4 @@ These are larger directions with open design questions rather than committed wor
 - No modal or dynamic analysis
 - No automated load combinations — combinations are built and analyzed manually
 - ~200 nodes recommended maximum; the solver factors a dense stiffness matrix rather than a sparse one
-- Models are stored and analyzed in imperial units (kips, inches, ksi). The metric option converts the editor inputs, tables, diagram labels, PDF report and CSV export, but saved JSON files carry no unit tag, the AI assistant works in imperial, and the libraries hold only ASTM materials and AISC shapes
+- Models are stored and analyzed in imperial units (kips, inches, ksi). The metric option converts the editor inputs, tables, diagram labels, PDF report and CSV export; saved JSON files carry a unit tag and also open from `kN-m-MPa` or `N-mm-MPa`; the AI assistant works in the selected system; and the material library includes EN 10025 steels and metric concrete grades. The section library still holds only AISC shapes

@@ -237,7 +237,11 @@ type/scale, render mode, grid, labels, animation controls).
   `jspdf-autotable`), producing the design/results report with the fixed
   D/C color bands described above.
 - **JSON model** — `src/utils/export.ts` (`exportModelJSON`), a full dump
-  of the model store for save/load round-trips.
+  of the model store for save/load round-trips, tagged
+  `{ "schemaVersion": 2, "units": "kip-in-ksi" }`. Loading reads the tag
+  and converts to internal units through `convertModel` in
+  `src/utils/model-units.ts`, the one table of every numeric model field and
+  its quantity. See [the file format](quick-start.md#model-file-format).
 - **CSV results** — `src/utils/export.ts` (`exportResultsCSV`), displacements,
   reactions, and internal forces.
 
