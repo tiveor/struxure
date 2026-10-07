@@ -49,12 +49,12 @@ export const QUANTITY_TYPES: readonly QuantityType[] = [
 
 // ─── Exact base conversions ─────────────────────────────────────────
 
-const IN_TO_M = 0.0254;
-const IN_TO_MM = 25.4;
-const KIP_TO_KN = 4.4482216152605;
-const KSI_TO_MPA = 6.894757293168361;
-const LB_TO_KG = 0.45359237;
-const FT_TO_M = 0.3048;
+export const IN_TO_M = 0.0254;
+export const IN_TO_MM = 25.4;
+export const KIP_TO_KN = 4.4482216152605;
+export const KSI_TO_MPA = 6.894757293168361;
+export const LB_TO_KG = 0.45359237;
+export const FT_TO_M = 0.3048;
 
 // ─── Labels ─────────────────────────────────────────────────────────
 

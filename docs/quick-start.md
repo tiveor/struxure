@@ -134,6 +134,39 @@ The model ships with **W12x26** as the default section. You can:
 - **Open** — Loads a model from a `.json` file
 - **Export CSV** — Downloads displacements, reactions, and internal forces as CSV
 
+## Model file format
+
+A saved `.json` file is the model plus two tags:
+
+```json
+{ "schemaVersion": 2, "units": "kip-in-ksi", "nodes": [...], "elements": [...], ... }
+```
+
+Struxure always saves in `kip-in-ksi`, its internal units. **Open** also
+reads files tagged in metric, so a model written by hand or by another tool
+can stay in its own units. Each tag uses one length unit for everything:
+coordinates, section dimensions, rebar cover, and the length part of every
+section property and load.
+
+| Tag | Length | Force | Moment | Line load | Stress, E, G | A | I, J | S, Z | Density |
+|-----|--------|-------|--------|-----------|--------------|---|------|------|---------|
+| `kip-in-ksi` | in | kip | kip-in | kip/in | ksi | in² | in⁴ | in³ | kip/in³ (weight) |
+| `kN-m-MPa` | m | kN | kN-m | kN/m | MPa | m² | m⁴ | m³ | kg/m³ (mass) |
+| `N-mm-MPa` | mm | N | N-mm | N/mm | MPa | mm² | mm⁴ | mm³ | kg/m³ (mass) |
+
+So under `kN-m-MPa` a 300 mm deep section has `"d": 0.3` and an Ix of
+84.9 × 10⁶ mm⁴ is `"Ix": 8.49e-5`. Element `betaAngle` is in degrees and bar
+sizes and counts are plain numbers in every tag.
+
+- A file without `units` (every file saved before this format) is read as
+  `kip-in-ksi`.
+- An unknown `units` value, or a `schemaVersion` newer than the app, is an
+  error and the file does not load.
+- Every steel material needs a positive `fy`; a file without one does not load.
+- After loading, values far outside the usual range for their unit, such as
+  a steel E of 200000 under `kip-in-ksi`, are listed as warnings so a wrong
+  tag does not go unnoticed.
+
 ## Included design checks
 
 ### Steel (AISC 360)
@@ -169,4 +202,7 @@ pnpm preview      # Preview of the production build
 - Linear static analysis only
 - Recommended maximum: ~200 nodes (browser performance)
 - No dynamic, modal, or P-Delta analysis
-- Imperial units (kips, inches, ksi)
+- Models are analyzed in kips, inches and ksi. The metric switch converts
+  inputs and outputs, saved files carry a unit tag, and the libraries include
+  EN 10025 steels and metric concrete grades, but sections are still AISC
+  shapes and the design checks run AISC 360 and ACI 318

@@ -126,6 +126,9 @@ export function Toolbar() {
         setModelName(file.name.replace(/\.json$/i, ''));
         clearResults();
         window.dispatchEvent(new Event('zoom-extents'));
+        if (validation.warnings?.length) {
+          alert(`Model loaded with warnings:\n\n${validation.warnings.join('\n')}`);
+        }
       };
       reader.readAsText(file);
     };

@@ -8,6 +8,15 @@ import type { LibraryMaterial } from '../../utils/material-library';
 import type { MaterialType } from '../../core/types';
 import { newId } from '../../utils/id';
 
+/** Library entries split by their `group`, in library order. */
+function byGroup(entries: LibraryMaterial[]): [string, LibraryMaterial[]][] {
+  const groups = new Map<string, LibraryMaterial[]>();
+  for (const e of entries) groups.set(e.group, [...(groups.get(e.group) ?? []), e]);
+  return [...groups];
+}
+
+const groupHeaderCls = 'col-span-2 text-[9px] font-bold text-slate-500 uppercase tracking-widest pt-1';
+
 const inputCls = 'w-full bg-slate-900 border border-slate-700 rounded text-sm px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:ring-accent focus:border-accent';
 const numCls = 'w-full bg-slate-900 border border-slate-700 rounded text-sm p-1.5 text-center font-mono text-slate-200 focus:ring-accent focus:border-accent';
 const labelCls = 'block text-[10px] font-semibold text-slate-500 mb-1 uppercase';
@@ -38,7 +47,7 @@ export function MaterialEditor() {
       return;
     }
     const id = newId('mat');
-    const { category: _, ...matProps } = lib;
+    const { category: _category, group: _group, nativeUnits: _native, ...matProps } = lib;
     addMaterial({ id, ...matProps });
   };
 
@@ -50,6 +59,11 @@ export function MaterialEditor() {
     // indistinguishable.
     if (materials.some((m) => m.name === trimmed)) {
       alert(`"${trimmed}" is already in your model`);
+      return;
+    }
+    // The AISC checks need a yield strength; a steel without one does not load.
+    if (type === 'steel' && !(fy > 0)) {
+      alert('Steel needs a positive yield strength Fy.');
       return;
     }
     const id = newId('mat');
@@ -91,65 +105,71 @@ export function MaterialEditor() {
         {/* Steel Library */}
         {activeTab === 'steel' && (
           <div className="grid grid-cols-2 gap-1.5 max-h-52 overflow-y-auto">
-            {MATERIAL_LIBRARY.steel.map((lib) => {
-              const alreadyAdded = materials.some((m) => m.name === lib.name);
-              return (
-                <button
-                  key={lib.name}
-                  className={`text-left p-2 rounded-lg border transition-all cursor-pointer ${
-                    alreadyAdded
-                      ? 'border-accent/30 bg-accent/5 opacity-60'
-                      : 'border-slate-700 bg-slate-800/50 hover:border-accent/50 hover:bg-slate-800'
-                  }`}
-                  onClick={() => handleAddFromLibrary(lib)}
-                  title={alreadyAdded ? 'Already in model' : `Add ${lib.name}`}
-                >
-                  <div className="text-xs font-bold text-slate-200 leading-tight">{lib.name}</div>
-                  <div className="text-[10px] text-slate-500 mt-0.5">{lib.category}</div>
-                  <div className="text-[10px] font-mono text-accent mt-1">
-                    Fy={formatQuantity(lib.fy ?? 0, 'stress', unitSystem, 0)} {unitLabel('stress', unitSystem)}
-                  </div>
-                  {alreadyAdded && (
-                    <span className="text-[9px] text-accent font-bold">ADDED</span>
-                  )}
-                </button>
-              );
-            })}
+            {byGroup(MATERIAL_LIBRARY.steel).flatMap(([group, entries]) => [
+              <div key={`group-${group}`} className={groupHeaderCls}>{group}</div>,
+              ...entries.map((lib) => {
+                const alreadyAdded = materials.some((m) => m.name === lib.name);
+                return (
+                  <button
+                    key={lib.name}
+                    className={`text-left p-2 rounded-lg border transition-all cursor-pointer ${
+                      alreadyAdded
+                        ? 'border-accent/30 bg-accent/5 opacity-60'
+                        : 'border-slate-700 bg-slate-800/50 hover:border-accent/50 hover:bg-slate-800'
+                    }`}
+                    onClick={() => handleAddFromLibrary(lib)}
+                    title={alreadyAdded ? 'Already in model' : `Add ${lib.name}`}
+                  >
+                    <div className="text-xs font-bold text-slate-200 leading-tight">{lib.name}</div>
+                    <div className="text-[10px] text-slate-500 mt-0.5">{lib.category}</div>
+                    <div className="text-[10px] font-mono text-accent mt-1">
+                      Fy={formatQuantity(lib.fy ?? 0, 'stress', unitSystem, 0)} {unitLabel('stress', unitSystem)}
+                    </div>
+                    {alreadyAdded && (
+                      <span className="text-[9px] text-accent font-bold">ADDED</span>
+                    )}
+                  </button>
+                );
+              }),
+            ])}
           </div>
         )}
 
         {/* Concrete Library */}
         {activeTab === 'concrete' && (
           <div className="grid grid-cols-2 gap-1.5 max-h-52 overflow-y-auto">
-            {MATERIAL_LIBRARY.concrete.map((lib) => {
-              const alreadyAdded = materials.some((m) => m.name === lib.name);
-              return (
-                <button
-                  key={lib.name}
-                  className={`text-left p-2 rounded-lg border transition-all cursor-pointer ${
-                    alreadyAdded
-                      ? 'border-accent/30 bg-accent/5 opacity-60'
-                      : 'border-slate-700 bg-slate-800/50 hover:border-accent/50 hover:bg-slate-800'
-                  }`}
-                  onClick={() => handleAddFromLibrary(lib)}
-                  title={alreadyAdded ? 'Already in model' : `Add ${lib.name}`}
-                >
-                  <div className="text-xs font-bold text-slate-200 leading-tight">{lib.name}</div>
-                  {/* The category reads "4000 psi", so metric shows f'c in MPa instead. */}
-                  <div className="text-[10px] text-slate-500 mt-0.5">
-                    {unitSystem === 'imperial'
-                      ? lib.category
-                      : `f'c ${formatQuantity(lib.fc ?? 0, 'stress', unitSystem, 1)} ${unitLabel('stress', unitSystem)}`}
-                  </div>
-                  <div className="text-[10px] font-mono text-accent mt-1">
-                    E={formatQuantity(lib.E, 'stress', unitSystem, 0)} {unitLabel('stress', unitSystem)}
-                  </div>
-                  {alreadyAdded && (
-                    <span className="text-[9px] text-accent font-bold">ADDED</span>
-                  )}
-                </button>
-              );
-            })}
+            {byGroup(MATERIAL_LIBRARY.concrete).flatMap(([group, entries]) => [
+              <div key={`group-${group}`} className={groupHeaderCls}>{group}</div>,
+              ...entries.map((lib) => {
+                const alreadyAdded = materials.some((m) => m.name === lib.name);
+                return (
+                  <button
+                    key={lib.name}
+                    className={`text-left p-2 rounded-lg border transition-all cursor-pointer ${
+                      alreadyAdded
+                        ? 'border-accent/30 bg-accent/5 opacity-60'
+                        : 'border-slate-700 bg-slate-800/50 hover:border-accent/50 hover:bg-slate-800'
+                    }`}
+                    onClick={() => handleAddFromLibrary(lib)}
+                    title={alreadyAdded ? 'Already in model' : `Add ${lib.name}`}
+                  >
+                    <div className="text-xs font-bold text-slate-200 leading-tight">{lib.name}</div>
+                    {/* ACI 318 categories read "4000 psi", so metric shows f'c in MPa instead. */}
+                    <div className="text-[10px] text-slate-500 mt-0.5">
+                      {unitSystem === 'imperial' || lib.nativeUnits !== 'kip-in-ksi'
+                        ? lib.category
+                        : `f'c ${formatQuantity(lib.fc ?? 0, 'stress', unitSystem, 1)} ${unitLabel('stress', unitSystem)}`}
+                    </div>
+                    <div className="text-[10px] font-mono text-accent mt-1">
+                      E={formatQuantity(lib.E, 'stress', unitSystem, 0)} {unitLabel('stress', unitSystem)}
+                    </div>
+                    {alreadyAdded && (
+                      <span className="text-[9px] text-accent font-bold">ADDED</span>
+                    )}
+                  </button>
+                );
+              }),
+            ])}
           </div>
         )}
 

@@ -1,14 +1,16 @@
 import type { StructuralModel, AnalysisResults } from '../core/types';
 import { unitLabel, systemLabel, toDisplay } from './units';
 import type { QuantityType, UnitSystem } from './units';
+import { tagModel } from './model-units';
 
 /**
- * Serialize a model for a saved `.json` file. Every field is written as is,
- * including optional ones such as a section's `reinforcement`, so
- * `validateModelJson` reads back the same model.
+ * Serialize a model for a saved `.json` file (format version 2): the model in
+ * internal units, tagged `{ schemaVersion: 2, units: "kip-in-ksi" }`. Every
+ * field is written as is, including optional ones such as a section's
+ * `reinforcement`, so `validateModelJson` reads back the same model.
  */
 export function modelToJson(model: StructuralModel): string {
-  return JSON.stringify(model, null, 2);
+  return JSON.stringify(tagModel(model), null, 2);
 }
 
 export function exportModelJSON(model: StructuralModel, modelName?: string): void {

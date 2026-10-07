@@ -180,7 +180,7 @@ Todos los eventos pasan por `track()` en `src/utils/analytics.ts`, que comprueba
 - Analisis estatico lineal unicamente
 - ~200 nodos maximo recomendado
 - Sin analisis dinamico, modal ni P-Delta
-- Unidades en sistema imperial (kips, pulgadas, ksi)
+- El analisis se hace en kips, pulgadas y ksi. El selector metrico convierte entradas y salidas, los archivos guardados llevan una etiqueta de unidades y se incluyen aceros EN 10025 y hormigones metricos, pero la biblioteca de secciones solo tiene perfiles AISC
 
 Consulta [ROADMAP.md](ROADMAP.md) (en ingles) para conocer las funcionalidades planeadas y como se espera abordar estas limitaciones.
 

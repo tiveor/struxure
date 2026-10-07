@@ -175,7 +175,7 @@ describe('extractAndValidateModel (AI path)', () => {
     const response = '```json\n' + JSON.stringify({
       nodes: [{ id: 1, x: 0, y: 0, z: 0 }, { id: 2, x: 120, y: 0, z: 0 }],
       elements: [{ id: 1, nodeI: 1, nodeJ: 2, materialId: 1, sectionId: 1 }],
-      materials: [{ id: 1, name: 'A992', type: 'steel', E: 29000, G: 11200, density: 0.000284 }],
+      materials: [{ id: 1, name: 'A992', type: 'steel', E: 29000, G: 11200, density: 0.000284, fy: 50 }],
       sections: [{ id: 1, name: 'W12x26', A: 7.65, Ix: 204, Iy: 17.3, J: 0.3 }],
       supports: [{ nodeId: 1, dx: 1, dy: 1, dz: 1, rx: 1, ry: 1, rz: 1 }],
       nodalLoads: [{ nodeId: 2, fy: -10 }],
@@ -219,7 +219,7 @@ describe('extractAndValidateModel (AI path)', () => {
     // with 490 pcf and 150 pcf. The same constants are applied here.
     const steel = extractAndValidateModel(JSON.stringify({
       ...validModel,
-      materials: [{ id: 'M1', name: 'A992', type: 'steel', E: 29000 }],
+      materials: [{ id: 'M1', name: 'A992', type: 'steel', E: 29000, fy: 50 }],
     }));
     expect(steel.model?.materials[0].G).toBeCloseTo(29000 / 2.6, 6);
     expect(steel.model?.materials[0].density).toBeCloseTo(0.000284, 9);
@@ -294,5 +294,156 @@ describe('section reinforcement (issue #25)', () => {
     expect(result.success).toBe(false);
     expect(result.errors.some((e) => /barsAlongB/.test(e))).toBe(true);
     expect(validateModelShape(concreteModel).success).toBe(true);
+  });
+});
+
+describe('unit-tagged files (schema version 2, issue #8)', () => {
+  it('writes the schema version and the internal unit tag', () => {
+    const parsed = JSON.parse(modelToJson(validModel));
+    expect(parsed.schemaVersion).toBe(2);
+    expect(parsed.units).toBe('kip-in-ksi');
+    expect(parsed.nodes).toEqual(validModel.nodes);
+  });
+
+  it('reads back a tagged file as the plain model, without the tags', () => {
+    const result = validateModelJson(modelToJson(validModel));
+    expect(result.success).toBe(true);
+    expect(result.model).toEqual(validModel);
+    expect(result.model).not.toHaveProperty('units');
+    expect(result.model).not.toHaveProperty('schemaVersion');
+    expect(result.warnings).toEqual([]);
+  });
+
+  it('treats an untagged file as kip-in-ksi', () => {
+    const result = validateModelJson(JSON.stringify(validModel));
+    expect(result.success).toBe(true);
+    expect(result.model).toEqual(validModel);
+  });
+
+  it('converts a kN-m-MPa file to internal units', () => {
+    const result = validateModelJson(jsonOf({
+      units: 'kN-m-MPa',
+      nodes: [{ id: 'N1', x: 0, y: 0, z: 0 }, { id: 'N2', x: 3.048, y: 0, z: 0 }],
+      materials: [{ id: 'M1', name: 'S355', type: 'steel', E: 210000, G: 81000, density: 7850, fy: 355 }],
+      nodalLoads: [{ id: 'L1', nodeId: 'N2', fx: 0, fy: -44.482216152605, fz: 0, mx: 0, my: 0, mz: 0 }],
+    }));
+    expect(result.success).toBe(true);
+    expect(result.model?.nodes[1].x).toBeCloseTo(120, 9);
+    expect(result.model?.nodalLoads[0].fy).toBeCloseTo(-10, 9);
+    expect(result.model?.materials[0].fy).toBeCloseTo(355 / 6.894757293168361, 9);
+    expect(result.model?.materials[0].density).toBeCloseTo(0.0002836, 7);
+    expect(result.warnings).toEqual([]);
+  });
+
+  it('converts an N-mm-MPa file, including section properties and cover', () => {
+    const result = validateModelJson(JSON.stringify({
+      ...validModel,
+      units: 'N-mm-MPa',
+      schemaVersion: 2,
+      nodes: [{ id: 'N1', x: 0, y: 0, z: 0 }, { id: 'N2', x: 0, y: 3048, z: 0 }],
+      materials: [{ id: 'M1', name: "f'c 28", type: 'concrete', E: 24870, G: 10363, density: 2400, fc: 28 }],
+      sections: [{
+        id: 'S1', name: 'C400', A: 160000, Ix: 2133333333, Iy: 2133333333, J: 3609000000, b: 400, h: 400,
+        reinforcement: { cover: 40, barSize: 8, barsAlongB: 3, barsAlongH: 3, tieSize: 3, fy: 420 },
+      }],
+    }));
+    expect(result.errors).toEqual([]);
+    const s = result.model!.sections[0];
+    expect(s.b).toBeCloseTo(400 / 25.4, 9);
+    expect(s.A).toBeCloseTo(160000 / 645.16, 6);
+    expect(s.Ix).toBeCloseTo(2133333333 / 25.4 ** 4, 6);
+    expect(s.reinforcement?.cover).toBeCloseTo(40 / 25.4, 9);
+    expect(s.reinforcement?.barSize).toBe(8);
+    expect(s.reinforcement?.fy).toBeCloseTo(420 / 6.894757293168361, 9);
+  });
+
+  it('rejects an unknown units tag', () => {
+    const result = validateModelJson(jsonOf({ units: 'SI' }));
+    expect(result.success).toBe(false);
+    expect(result.errors).toEqual(['Unknown "units" "SI". Expected one of: "kip-in-ksi", "kN-m-MPa", "N-mm-MPa"']);
+  });
+
+  it('rejects a file from a newer schema version', () => {
+    const result = validateModelJson(jsonOf({ schemaVersion: 3 }));
+    expect(result.success).toBe(false);
+    expect(result.errors[0]).toMatch(/schemaVersion 3, newer than this app supports/);
+  });
+
+  it('warns when steel E looks like MPa under a kip-in-ksi tag', () => {
+    const result = validateModelJson(jsonOf({
+      materials: [{ id: 'M1', name: 'S355', type: 'steel', E: 200000, G: 77000, density: 0.000284, fy: 355 }],
+    }));
+    expect(result.success).toBe(true);
+    expect(result.warnings).toHaveLength(2);
+    expect(result.warnings?.[0]).toMatch(/Material "M1": E is 200000 ksi .*"kip-in-ksi"/);
+    expect(result.warnings?.[1]).toMatch(/Material "M1": fy is 355 ksi/);
+  });
+
+  it('warns when ksi values are tagged as MPa', () => {
+    const result = validateModelJson(jsonOf({ units: 'kN-m-MPa' }));
+    expect(result.success).toBe(true);
+    expect(result.warnings?.some((w) => /E is 4206 ksi after reading the file as "kN-m-MPa"/.test(w))).toBe(true);
+  });
+});
+
+describe('steel yield strength is required', () => {
+  const steelWithout = (extra: Record<string, unknown>) => ({
+    materials: [{ id: 'M1', name: 'A992', type: 'steel', E: 29000, G: 11200, density: 0.000284, ...extra }],
+  });
+
+  it.each([[{}], [{ fy: 0 }], [{ fy: -50 }]])('rejects a steel material with %j on the file path', (extra) => {
+    const result = validateModelJson(jsonOf(steelWithout(extra)));
+    expect(result.success).toBe(false);
+    expect(result.errors).toEqual(['Material "M1": steel needs a positive yield strength "fy"']);
+  });
+
+  it('rejects it on the AI path too', () => {
+    const result = extractAndValidateModel(jsonOf(steelWithout({})));
+    expect(result.success).toBe(false);
+    expect(result.errors).toContain('Material "M1": steel needs a positive yield strength "fy"');
+  });
+
+  it('does not require fy on concrete', () => {
+    const result = validateModelJson(jsonOf({
+      materials: [{ id: 'M1', name: 'C', type: 'concrete', E: 3605, G: 1502, density: 0.0000868, fc: 4 }],
+    }));
+    expect(result.success).toBe(true);
+  });
+});
+
+describe('AI path units', () => {
+  const metricReply = {
+    units: 'kN-m-MPa',
+    nodes: [{ id: 'N1', x: 0, y: 0, z: 0 }, { id: 'N2', x: 4.5, y: 0, z: 0 }],
+    elements: [{ id: 'E1', nodeI: 'N1', nodeJ: 'N2', materialId: 'M1', sectionId: 'S1', betaAngle: 0 }],
+    materials: [{ id: 'M1', name: 'S355', type: 'steel', E: 210000, fy: 355 }],
+    sections: [{ id: 'S1', name: 'W14x22', A: 0.004187, Ix: 8.283e-5, Iy: 2.914e-6, J: 8.658e-8 }],
+    supports: [{ nodeId: 'N1', dx: true, dy: true, dz: true, rx: true, ry: true, rz: true }],
+    nodalLoads: [{ id: 'L1', nodeId: 'N2', fy: -90 }],
+  };
+
+  it('converts a tagged metric reply to internal units', () => {
+    const result = extractAndValidateModel('```json\n' + JSON.stringify(metricReply) + '\n```');
+    expect(result.errors).toEqual([]);
+    expect(result.model?.nodes[1].x).toBeCloseTo(4.5 / 0.0254, 9);
+    expect(result.model?.nodalLoads[0].fy).toBeCloseTo(-90 / 4.4482216152605, 9);
+    expect(result.model?.sections[0].Ix).toBeCloseTo(199, 0);
+    // A density filled in by coercion is written in the reply's units first.
+    expect(result.model?.materials[0].density).toBeCloseTo(0.000284, 9);
+    expect(result.model).not.toHaveProperty('units');
+    expect(result.warnings).toEqual([]);
+  });
+
+  it('reads an untagged reply in the units the prompt asked for', () => {
+    const { units: _units, ...untagged } = metricReply;
+    const result = extractAndValidateModel(JSON.stringify(untagged), 'kN-m-MPa');
+    expect(result.success).toBe(true);
+    expect(result.model?.nodes[1].x).toBeCloseTo(4.5 / 0.0254, 9);
+  });
+
+  it('rejects an unknown tag in a reply', () => {
+    const result = extractAndValidateModel(JSON.stringify({ ...metricReply, units: 'metric' }));
+    expect(result.success).toBe(false);
+    expect(result.errors[0]).toMatch(/^Unknown "units" "metric"/);
   });
 });

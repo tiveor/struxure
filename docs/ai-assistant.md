@@ -14,7 +14,7 @@ Supports two modes:
 ## Architecture
 
 ```
-User Input → System Prompt + Schema → LLM API → JSON Response → Validator/Coercion → loadModel()
+User Input → System Prompt (user's units) + Schema → LLM API → tagged JSON → Validator/Coercion → convert to kip-in-ksi → loadModel()
 ```
 
 ### Files
@@ -26,6 +26,7 @@ User Input → System Prompt + Schema → LLM API → JSON Response → Validato
 | `src/utils/ai-system-prompt.ts` | System prompt with schema, units, examples, rules |
 | `src/utils/ai-client.ts` | `chatCompletionStream()`, `testConnection()`, SSE parser |
 | `src/utils/ai-model-validator.ts` | `extractAndValidateModel()`, `coerceModel()` |
+| `src/utils/model-units.ts` | Unit tags and `convertModel()`, shared with the JSON file loader |
 
 ### Flow
 
@@ -34,12 +35,28 @@ User Input → System Prompt + Schema → LLM API → JSON Response → Validato
 3. Response streams in real-time (SSE) to the chat bubble
 4. `extractAndValidateModel()` extracts JSON from code fences, parses it
 5. `coerceModel()` auto-fixes common LLM mistakes (see below)
-6. Cross-reference validation checks all IDs
-7. If valid, model is loaded into the viewport via `loadModel()`
+6. The reply's `units` tag is read and the model is converted to internal kip-in-ksi
+7. Cross-reference validation checks all IDs and that every steel has a positive `fy`
+8. If valid, model is loaded into the viewport via `loadModel()`. Plausibility warnings (for example a steel E far from the usual range for the tagged units) are appended to the chat message
 
 ### Conversational Context
 
 Follow-up messages include the current model state as JSON in the user message, so the LLM can modify the existing structure (e.g., "add wind loads", "change columns to W14x48").
+
+The current model is sent converted to the user's unit system and tagged with it (`"units": "kN-m-MPa"` for metric). The LLM then reads and writes numbers in one system. Sending the internal kip-in-ksi model to a metric prompt would invite replies that keep old coordinates in inches next to new ones in metres.
+
+### Units
+
+The system prompt is built per unit system by `buildSystemPrompt(unitSystem)`:
+
+| Display system | Tag the LLM must write | Default material | Example |
+|----------------|------------------------|------------------|---------|
+| Imperial | `kip-in-ksi` | A992 (ksi) | 30 ft beam, 20 kip load |
+| Metric | `kN-m-MPa` | S355 (MPa) | 9 m beam, 90 kN load |
+
+`kN-m-MPa` uses metres for every length, including section dimensions, so section properties are in m², m⁴ and m³; the common sections are listed already converted. The full tag definitions are in [quick-start.md](quick-start.md#model-file-format).
+
+A reply with a `units` tag is converted from that tag. A reply without one is read in the units the prompt asked for. An unknown tag is a validation error.
 
 ---
 
@@ -139,15 +156,15 @@ Any API that implements the OpenAI `/v1/chat/completions` endpoint works. Set cu
 
 Located in `src/utils/ai-system-prompt.ts`. Defines:
 
-- **Units**: Imperial (kip-in-ksi)
-- **Schema**: Full `StructuralModel` TypeScript interface
+- **Units**: the user's system, `kip-in-ksi` or `kN-m-MPa`, and the `units` tag to write
+- **Schema**: Full `StructuralModel` TypeScript interface, with `units`
 - **Coordinate system**: X (horizontal), Y (vertical up), Z (depth)
-- **Default material**: A992 Steel
-- **Common sections**: W12x26, W14x22, W10x49, HSS6x6x3/8
+- **Default material**: A992 Steel (imperial) or S355 Steel (metric)
+- **Common sections**: W12x26, W14x22, W10x49, HSS6x6x3/8, in the requested units
 - **Support types**: Fixed, Pin, Roller
-- **Conversions**: ft→in, klf→kip/in
-- **Example**: Simply supported beam (30 ft span, 20 kip center load)
-- **13 rules** for valid output
+- **Conversions**: ft→in and klf→kip/in, or mm→m and cm⁴→m⁴
+- **Example**: Simply supported beam (30 ft span, 20 kip center load, or 9 m span, 90 kN center load)
+- **15 rules** for valid output, including a positive steel `fy` and the units tag
 
 ---
 
@@ -178,6 +195,8 @@ Auto-fixes common LLM type mistakes before validation:
 | Missing `betaAngle` | Default to `0` |
 | Missing force/moment fields | Default to `0` |
 | Missing load IDs | Auto-generate `"L1"`, `"L2"`, etc. |
+| Missing material `G` | `E / 2.6` for steel, `E / 2.4` for concrete |
+| Missing material `density` | Library density, written in the reply's units |
 | Missing distributed load IDs | Auto-generate `"DL1"`, `"DL2"`, etc. |
 
 ### Cross-Reference Validation
@@ -189,6 +208,7 @@ After coercion, validates:
 - All `nodeId` in loads reference existing nodes
 - All `elementId` in distributed loads reference existing elements
 - At least one node, element, and support exist
+- Every steel material has a positive `fy` (the AISC checks need it)
 
 ---
 
@@ -240,11 +260,11 @@ Hits `/v1/models` endpoint. Returns `{ ok, models?, error? }` with specific diag
 
 ## Example Prompts
 
-Built-in suggestions shown in empty chat state:
+Built-in suggestions shown in empty chat state, in the selected unit system:
 
-- "Simple beam, 30ft span, 20 kip center load"
-- "Cantilever, 15ft, W12x26, 5 kip tip load"
-- "Portal frame, 2 stories, 3 bays, 20ft spans, 12ft height"
+- "Simple beam, 30ft span, 20 kip center load" (metric: "Simple beam, 9 m span, 90 kN center load")
+- "Cantilever, 15ft, W12x26, 5 kip tip load" (metric: "Cantilever, 4.5 m, W12x26, 22 kN tip load")
+- "Portal frame, 2 stories, 3 bays, 20ft spans, 12ft height" (metric: 6 m spans, 3.6 m height)
 - "3D building, 2x2 bays, 3 stories, fixed bases"
 
 ### Follow-up Examples

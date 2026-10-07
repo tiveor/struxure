@@ -1,6 +1,8 @@
-import { isRecord, validateModelShape } from './model-validator';
+import { isRecord, readUnitTag, validateModelShape } from './model-validator';
 import { CONCRETE_DENSITY, STEEL_DENSITY } from './material-library';
 import type { ValidationResult } from './model-validator';
+import { INTERNAL_UNIT_TAG, convertValue } from './model-units';
+import type { ModelUnitTag } from './model-units';
 
 export type { ValidationResult };
 
@@ -11,7 +13,7 @@ export type { ValidationResult };
  * - Missing betaAngle → default 0
  * - Missing moment fields → default 0
  */
-function coerceModel(parsed: Record<string, unknown>): void {
+function coerceModel(parsed: Record<string, unknown>, units: ModelUnitTag): void {
   // Every loop skips non-object items — validateModelShape reports them
   // afterwards, and dereferencing fields on `null` here would throw first.
   // Coerce node IDs to strings
@@ -51,7 +53,8 @@ function coerceModel(parsed: Record<string, unknown>): void {
         m.G = m.E / (isConcrete ? 2.4 : 2.6);
       }
       if (typeof m.density !== 'number') {
-        m.density = isConcrete ? CONCRETE_DENSITY : STEEL_DENSITY;
+        // The library densities are internal; write them in the reply's units.
+        m.density = convertValue(isConcrete ? CONCRETE_DENSITY : STEEL_DENSITY, 'density', INTERNAL_UNIT_TAG, units);
       }
     }
   }
@@ -116,7 +119,16 @@ function coerceModel(parsed: Record<string, unknown>): void {
   }
 }
 
-export function extractAndValidateModel(llmResponse: string): ValidationResult {
+/**
+ * Pull the model JSON out of an LLM reply, coerce common mistakes and
+ * validate it. The reply's `units` tag says which units its numbers are in;
+ * a reply without one is read in `defaultUnits`, the units the system prompt
+ * asked for. The returned model is in internal units.
+ */
+export function extractAndValidateModel(
+  llmResponse: string,
+  defaultUnits: ModelUnitTag = INTERNAL_UNIT_TAG,
+): ValidationResult {
   // 1. Extract JSON from code fences or raw
   const jsonMatch = llmResponse.match(/```json\s*([\s\S]*?)```/)
     || llmResponse.match(/```\s*([\s\S]*?)```/)
@@ -142,6 +154,9 @@ export function extractAndValidateModel(llmResponse: string): ValidationResult {
 
   // 3. Coerce common LLM type mistakes, then validate shape,
   //    cross-references and sanity against the shared model validator.
-  coerceModel(parsed);
-  return validateModelShape(parsed);
+  // An unknown tag is reported by validateModelShape; coercion then falls
+  // back to the default units, which only affects filled-in densities.
+  const { units } = readUnitTag(parsed, defaultUnits);
+  coerceModel(parsed, units);
+  return validateModelShape(parsed, defaultUnits);
 }

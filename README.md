@@ -180,7 +180,7 @@ All events go through `track()` in `src/utils/analytics.ts`, which checks `typeo
 - Linear static analysis only
 - ~200 nodes recommended maximum
 - No dynamic, modal, or P-Delta analysis
-- Imperial units (kips, inches, ksi)
+- Analysis runs in kips, inches and ksi. The metric switch converts inputs and outputs, saved files carry a unit tag, and EN 10025 steels and metric concrete grades are included, but the section library is AISC shapes only
 
 See [ROADMAP.md](ROADMAP.md) for planned features and how these limitations are expected to be addressed.
 
