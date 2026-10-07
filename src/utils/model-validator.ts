@@ -238,6 +238,24 @@ function toInternal(parsed: Record<string, unknown>, units: ModelUnitTag): Recor
 }
 
 /**
+ * Every steel material needs a positive yield strength: the AISC checks
+ * depend on it, and silently assuming one would hide a wrong model.
+ */
+function checkSteelYield(parsed: Record<string, unknown>): string[] {
+  const errors: string[] = [];
+  const materials = parsed.materials;
+  if (!Array.isArray(materials)) return errors;
+  materials.forEach((m, i) => {
+    if (!isRecord(m) || m.type !== 'steel') return;
+    if (!isFiniteNumber(m.fy) || m.fy <= 0) {
+      const tag = isNonEmptyString(m.id) ? `"${m.id}"` : `#${i + 1}`;
+      errors.push(`Material ${tag}: steel needs a positive yield strength "fy"`);
+    }
+  });
+  return errors;
+}
+
+/**
  * Usual ranges in ksi, wide enough for every grade the libraries carry. A
  * value outside them usually means the file was written in other units
  * than its tag says (steel E = 200000 under kip-in-ksi is MPa).
@@ -332,6 +350,7 @@ export function validateModelShape(
   const internal = toInternal(parsed, tag.units);
   const model = internal as unknown as StructuralModel;
   errors.push(
+    ...checkSteelYield(internal),
     ...checkSectionReinforcement(internal),
     ...checkReferences(model),
     ...checkSanity(model),
@@ -375,7 +394,7 @@ export function validateModelJson(text: string): ValidationResult {
   // inches, so it and the checks after it run on the converted model.
   const internal = toInternal(parsed, tag.units);
   const model = internal as unknown as StructuralModel;
-  errors.push(...checkSectionReinforcement(internal), ...checkReferences(model));
+  errors.push(...checkSteelYield(internal), ...checkSectionReinforcement(internal), ...checkReferences(model));
 
   if (errors.length > 0) {
     return { success: false, errors };

@@ -52,6 +52,11 @@ export function MaterialEditor() {
       alert(`"${trimmed}" is already in your model`);
       return;
     }
+    // The AISC checks need a yield strength; a steel without one does not load.
+    if (type === 'steel' && !(fy > 0)) {
+      alert('Steel needs a positive yield strength Fy.');
+      return;
+    }
     const id = newId('mat');
     const mat = type === 'steel'
       ? { id, name: trimmed, type: 'steel' as const, E, G, density: 0.000284, fy, fu: fy * 1.3 }

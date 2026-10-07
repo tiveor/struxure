@@ -175,7 +175,7 @@ describe('extractAndValidateModel (AI path)', () => {
     const response = '```json\n' + JSON.stringify({
       nodes: [{ id: 1, x: 0, y: 0, z: 0 }, { id: 2, x: 120, y: 0, z: 0 }],
       elements: [{ id: 1, nodeI: 1, nodeJ: 2, materialId: 1, sectionId: 1 }],
-      materials: [{ id: 1, name: 'A992', type: 'steel', E: 29000, G: 11200, density: 0.000284 }],
+      materials: [{ id: 1, name: 'A992', type: 'steel', E: 29000, G: 11200, density: 0.000284, fy: 50 }],
       sections: [{ id: 1, name: 'W12x26', A: 7.65, Ix: 204, Iy: 17.3, J: 0.3 }],
       supports: [{ nodeId: 1, dx: 1, dy: 1, dz: 1, rx: 1, ry: 1, rz: 1 }],
       nodalLoads: [{ nodeId: 2, fy: -10 }],
@@ -204,7 +204,7 @@ describe('extractAndValidateModel (AI path)', () => {
     // is the same class of omission as the betaAngle this already defaults.
     const ai = extractAndValidateModel(JSON.stringify({
       ...validModel,
-      materials: [{ id: 'M1', name: 'A992', type: 'steel', E: 29000 }],
+      materials: [{ id: 'M1', name: 'A992', type: 'steel', E: 29000, fy: 50 }],
     }));
     expect(ai.errors).toEqual([]);
     expect(ai.success).toBe(true);
@@ -219,7 +219,7 @@ describe('extractAndValidateModel (AI path)', () => {
     // with 490 pcf and 150 pcf. The same constants are applied here.
     const steel = extractAndValidateModel(JSON.stringify({
       ...validModel,
-      materials: [{ id: 'M1', name: 'A992', type: 'steel', E: 29000 }],
+      materials: [{ id: 'M1', name: 'A992', type: 'steel', E: 29000, fy: 50 }],
     }));
     expect(steel.model?.materials[0].G).toBeCloseTo(29000 / 2.6, 6);
     expect(steel.model?.materials[0].density).toBeCloseTo(0.000284, 9);
@@ -383,6 +383,31 @@ describe('unit-tagged files (schema version 2, issue #8)', () => {
     const result = validateModelJson(jsonOf({ units: 'kN-m-MPa' }));
     expect(result.success).toBe(true);
     expect(result.warnings?.some((w) => /E is 4206 ksi after reading the file as "kN-m-MPa"/.test(w))).toBe(true);
+  });
+});
+
+describe('steel yield strength is required', () => {
+  const steelWithout = (extra: Record<string, unknown>) => ({
+    materials: [{ id: 'M1', name: 'A992', type: 'steel', E: 29000, G: 11200, density: 0.000284, ...extra }],
+  });
+
+  it.each([[{}], [{ fy: 0 }], [{ fy: -50 }]])('rejects a steel material with %j on the file path', (extra) => {
+    const result = validateModelJson(jsonOf(steelWithout(extra)));
+    expect(result.success).toBe(false);
+    expect(result.errors).toEqual(['Material "M1": steel needs a positive yield strength "fy"']);
+  });
+
+  it('rejects it on the AI path too', () => {
+    const result = extractAndValidateModel(jsonOf(steelWithout({})));
+    expect(result.success).toBe(false);
+    expect(result.errors).toContain('Material "M1": steel needs a positive yield strength "fy"');
+  });
+
+  it('does not require fy on concrete', () => {
+    const result = validateModelJson(jsonOf({
+      materials: [{ id: 'M1', name: 'C', type: 'concrete', E: 3605, G: 1502, density: 0.0000868, fc: 4 }],
+    }));
+    expect(result.success).toBe(true);
   });
 });
 
