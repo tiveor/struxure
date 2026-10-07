@@ -57,14 +57,35 @@ validated.
 | `solveModel` end-to-end (K·u = F, reactions, element forces) | Validated against analytical beam solutions |
 | Internal force distribution along members | Self-consistent |
 | Local element stiffness matrix and fixed-end forces (`local-stiffness.ts`) | Validated against the closed-form space-frame element matrix, entry by entry, plus symmetry and the six rigid-body modes |
-| 3D transformation, assembly, boundary conditions | Unverified in isolation — only exercised through `solveModel` |
+| 3D transformation (`transformation.ts`) | Validated against the direction-cosine rotation matrix: identity along X, plane rotation about Z, beta rotation about local x, orthonormal and right-handed, block-diagonal 12x12. See the caveat below on near-vertical members |
+| Global assembly (`assembler.ts`) | Validated: two collinear elements sum at the shared node term by term, an inclined element matches the closed-form plane-frame global matrix, and nodal and uniform-load equivalent forces land on the right DOFs |
+| Boundary conditions (`boundary-conditions.ts`) | Validated: DOF numbering of restraints, free/restrained partition, and the reduced cantilever system solved against PL³/3EI and PL²/2EI |
+| Matrix helpers (`matrix-utils.ts`) | Validated against hand-worked products, the plane truss bar Tᵀ·k·T, and direct-stiffness scatter of two springs |
+| Post-processing (`post-processor.ts`) | Validated for nodal loads: reactions and member end forces of a determinate cantilever and simply supported beam from closed-form displacements, with ΣF = 0 and ΣM = 0. **Reactions under distributed loads are wrong**, see below |
 
-Expanding the remaining ones into standalone validation cases is on the
-[roadmap](../ROADMAP.md). End-to-end coverage is not a substitute: a sign error
+End-to-end coverage is not a substitute for these: a sign error
 in the weak-axis coupling term of the local stiffness matrix passes the entire
 `solveModel` suite. Every model in it is planar in XY and loaded in plane, so
 the weak-axis bending DOFs are never excited and the wrong term never reaches
 a result.
+
+### Known open defects in the analysis engine
+
+Two defects surfaced while validating the core modules in isolation. Each is
+pinned by a skipped test that states the correct expectation, so it can be
+enabled once the fix lands.
+
+- **Support reactions omit distributed loads** (`post-processor.ts`).
+  Reactions are computed as K·u minus the applied nodal loads only, so the
+  equivalent nodal loads of a distributed load on an element framing into a
+  support never reach that support's reaction. A simply supported beam with
+  1 kip/in over 120 in reports R = 0 at both ends instead of 60 kips.
+  Displacements and member end forces are correct.
+- **Local axes jump near vertical** (`transformation.ts`). Members within
+  about 2.56° of global Y switch to a different local y/z convention, so two
+  members tilted 87° and 88° from horizontal in the XY plane bend in plane
+  about different section axes (Ix vs Iy). A perfectly vertical column in an
+  XY frame with beta = 0 also bends in plane about its weak axis.
 
 ## Known unit pitfalls
 
