@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- **Vertical columns bent about their weak axis (#66).** With beta = 0, a
+  vertical member in an XY frame bent in plane about Iy, and members within
+  about 2.56° of vertical switched axis convention. Local z is now global +Z
+  for every member in the XY plane, so columns bend in plane about Ix like
+  beams. **Results of models with vertical members change**: re-run them. Use
+  beta = 90 for a column that is meant to bend about its weak axis.
+- The 3D view draws each section with the analysis local axes and beta, so
+  I-shapes in a plane frame show their web in the plane. Force diagrams are
+  drawn along each member's local y, and the combined stress heatmap uses the
+  strong-axis moment instead of the weak-axis one.
+
 ## v0.3.1
 
 The concrete design checks were wrong. Writing the validation tests that

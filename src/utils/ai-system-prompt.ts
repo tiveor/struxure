@@ -195,7 +195,7 @@ ${p.example}
 6. For 2D structures (beams, frames), set z=0 for all nodes.
 7. For 3D structures, use the Z axis for depth.
 8. Include at least one material and one section.
-9. betaAngle is typically 0 for standard orientations.
+9. betaAngle is typically 0: beams and columns in the XY plane then bend in plane about their strong axis (Ix). Use 90 to turn a member to its weak axis.
 10. All numeric values must be numbers, not strings.
 11. Columns are vertical elements (nodes differ in Y coordinate).
 12. Beams are horizontal elements (nodes differ in X or Z coordinate).
