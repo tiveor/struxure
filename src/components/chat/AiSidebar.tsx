@@ -7,12 +7,13 @@ import { useUIStore } from '../../store/ui-store';
 import { useResultsStore } from '../../store/results-store';
 import { chatCompletionStream, pingServer, testConnection } from '../../utils/ai-client';
 import type { ConnectionTestResult } from '../../utils/ai-client';
-import { SYSTEM_PROMPT, buildUserMessage } from '../../utils/ai-system-prompt';
+import { buildSystemPrompt, buildUserMessage } from '../../utils/ai-system-prompt';
 import { newId } from '../../utils/id';
 import { extractAndValidateModel } from '../../utils/ai-model-validator';
 import { isProviderHost } from '../../utils/endpoint-host';
 import { ApiKeyField } from './ApiKeyField';
 import type { UnitSystem } from '../../utils/units';
+import { unitTagForSystem } from '../../utils/model-units';
 
 // Example prompts in the user's unit system. The metric set uses round
 // metric values, not literal conversions of the imperial ones.
@@ -164,11 +165,11 @@ function ChatTab({ provider }: { provider: AiProvider }) {
     const currentModel = useModelStore.getState().getModel();
     const hasModel = currentModel.nodes.length > 0;
     const apiMessages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
-      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'system', content: buildSystemPrompt(unitSystem) },
       ...messages.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
       {
         role: 'user',
-        content: buildUserMessage(text, hasModel ? JSON.stringify(currentModel) : null),
+        content: buildUserMessage(text, hasModel ? currentModel : null, unitSystem),
       },
     ];
 
@@ -199,11 +200,13 @@ function ChatTab({ provider }: { provider: AiProvider }) {
       if (provider === 'local') setConnectionStatus('connected');
 
       // Try to extract and validate model
-      const validation = extractAndValidateModel(response);
+      // A reply without a units tag is read in the units the prompt asked for.
+      const validation = extractAndValidateModel(response, unitTagForSystem(unitSystem));
 
       if (validation.success && validation.model) {
         updateMessage(provider, assistantMsg.id, {
-          content: `Model generated: ${validation.model.nodes.length} nodes, ${validation.model.elements.length} elements`,
+          content: `Model generated: ${validation.model.nodes.length} nodes, ${validation.model.elements.length} elements`
+            + (validation.warnings?.length ? `\n\nWarnings:\n${validation.warnings.join('\n')}` : ''),
           modelLoaded: true,
         });
 

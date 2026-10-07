@@ -385,3 +385,40 @@ describe('unit-tagged files (schema version 2, issue #8)', () => {
     expect(result.warnings?.some((w) => /E is 4206 ksi after reading the file as "kN-m-MPa"/.test(w))).toBe(true);
   });
 });
+
+describe('AI path units', () => {
+  const metricReply = {
+    units: 'kN-m-MPa',
+    nodes: [{ id: 'N1', x: 0, y: 0, z: 0 }, { id: 'N2', x: 4.5, y: 0, z: 0 }],
+    elements: [{ id: 'E1', nodeI: 'N1', nodeJ: 'N2', materialId: 'M1', sectionId: 'S1', betaAngle: 0 }],
+    materials: [{ id: 'M1', name: 'S355', type: 'steel', E: 210000, fy: 355 }],
+    sections: [{ id: 'S1', name: 'W14x22', A: 0.004187, Ix: 8.283e-5, Iy: 2.914e-6, J: 8.658e-8 }],
+    supports: [{ nodeId: 'N1', dx: true, dy: true, dz: true, rx: true, ry: true, rz: true }],
+    nodalLoads: [{ id: 'L1', nodeId: 'N2', fy: -90 }],
+  };
+
+  it('converts a tagged metric reply to internal units', () => {
+    const result = extractAndValidateModel('```json\n' + JSON.stringify(metricReply) + '\n```');
+    expect(result.errors).toEqual([]);
+    expect(result.model?.nodes[1].x).toBeCloseTo(4.5 / 0.0254, 9);
+    expect(result.model?.nodalLoads[0].fy).toBeCloseTo(-90 / 4.4482216152605, 9);
+    expect(result.model?.sections[0].Ix).toBeCloseTo(199, 0);
+    // A density filled in by coercion is written in the reply's units first.
+    expect(result.model?.materials[0].density).toBeCloseTo(0.000284, 9);
+    expect(result.model).not.toHaveProperty('units');
+    expect(result.warnings).toEqual([]);
+  });
+
+  it('reads an untagged reply in the units the prompt asked for', () => {
+    const { units: _units, ...untagged } = metricReply;
+    const result = extractAndValidateModel(JSON.stringify(untagged), 'kN-m-MPa');
+    expect(result.success).toBe(true);
+    expect(result.model?.nodes[1].x).toBeCloseTo(4.5 / 0.0254, 9);
+  });
+
+  it('rejects an unknown tag in a reply', () => {
+    const result = extractAndValidateModel(JSON.stringify({ ...metricReply, units: 'metric' }));
+    expect(result.success).toBe(false);
+    expect(result.errors[0]).toMatch(/^Unknown "units" "metric"/);
+  });
+});
