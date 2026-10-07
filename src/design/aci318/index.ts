@@ -2,7 +2,7 @@ import type { Material, Section } from '../../core/types';
 import type { ConcreteDesignResult } from '../types';
 import { checkFlexure } from './flexure';
 import { checkShear } from './shear';
-import { checkColumn } from './columns';
+import { checkColumn, ASSUMED_COLUMN_RHO, COLUMN_INDICATIVE_REASON } from './columns';
 
 /**
  * Full ACI 318 design check for a concrete element.
@@ -41,9 +41,12 @@ export function designConcreteElement(
       details: {
         flexureRatio: columnRatio,
         shearRatio: 0,
-        AsRequired: 0.01 * Ag, // Minimum 1%
         AvRequired: 0,
+        // The steel is an assumption of checkColumn, not a computed
+        // requirement, so it is reported as such and AsRequired is omitted.
+        rhoAssumed: ASSUMED_COLUMN_RHO,
       },
+      indicative: { reason: COLUMN_INDICATIVE_REASON },
     };
   }
 

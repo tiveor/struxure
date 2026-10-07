@@ -5,9 +5,11 @@ import {
   formatForce,
   formatDCRatio,
   captureViewportScreenshot,
+  designChecksTableBody,
 } from '../report-generator';
 import type { StructuralModel, AnalysisResults } from '../../core/types';
 import type { DesignCheckResult } from '../../design/types';
+import { INDICATIVE_MARK } from '../../design/indicative';
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 
@@ -248,5 +250,32 @@ describe('captureViewportScreenshot', () => {
     const result = captureViewportScreenshot();
     expect(result).toBeNull();
     vi.unstubAllGlobals();
+  });
+});
+
+// ─── Indicative design results ───────────────────────────────────────
+
+describe('design checks table, indicative results', () => {
+  const column: DesignCheckResult = {
+    elementId: 'c1', material: 'concrete', ratio: 0.5234, status: 'pass',
+    details: { flexureRatio: 0.5234, shearRatio: 0, AvRequired: 0, rhoAssumed: 0.01 },
+    indicative: { reason: 'Assumed steel, screening only.' },
+  };
+  const beam: DesignCheckResult = {
+    elementId: 'b1', material: 'concrete', ratio: 0.4, status: 'pass',
+    details: { flexureRatio: 0.4, shearRatio: 0.2, AsRequired: 1.2, AvRequired: 0 },
+  };
+
+  it('marks only the indicative ratio', () => {
+    const body = designChecksTableBody([column, beam]);
+    expect(body[0][2]).toBe(`0.523 ${INDICATIVE_MARK}`);
+    expect(body[1][2]).toBe('0.400');
+  });
+
+  it('prints the reason as a footnote under the table', async () => {
+    const withColumn = await generateReport(createTestModel(), createTestResults(), [column, beam]);
+    const beamsOnly = await generateReport(createTestModel(), createTestResults(), [beam]);
+    expect(await withColumn.text()).toContain('Indicative: Assumed steel, screening only.');
+    expect(await beamsOnly.text()).not.toContain('Indicative:');
   });
 });

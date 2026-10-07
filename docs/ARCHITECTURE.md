@@ -121,8 +121,10 @@ dispatches by `material.type`:
   `shear.ts`.
 
 Both paths return a `DesignCheckResult` (`src/design/types.ts`) carrying a
-governing demand/capacity (`ratio`) and a `pass`/`fail` `status`. These
-results feed `src/store/results-store.ts` as `designResults`, which the
+governing demand/capacity (`ratio`) and a `pass`/`fail` `status`. A result
+whose ratio is a screening estimate (today only the ACI 318 column branch)
+also carries `indicative: { reason }`, which the results panel, heatmap legend
+and PDF report mark with a † (`src/design/indicative.ts`). These results feed `src/store/results-store.ts` as `designResults`, which the
 viewport heatmap and the PDF report both consume.
 
 Note: as of this writing, `src/design/aisc360/` and `src/design/aci318/`

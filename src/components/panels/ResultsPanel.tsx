@@ -2,6 +2,7 @@ import { useResultsStore } from '../../store/results-store';
 import { useModelStore } from '../../store/model-store';
 import { useUIStore } from '../../store/ui-store';
 import { unitLabel, toDisplay } from '../../utils/units';
+import { INDICATIVE_MARK, indicativeReasons } from '../../design/indicative';
 
 export function ResultsPanel() {
   const analysisResults = useResultsStore((s) => s.analysisResults);
@@ -24,6 +25,7 @@ export function ResultsPanel() {
   const dispUnit = unitLabel('displacement', unitSystem);
   const forceUnit = unitLabel('force', unitSystem);
   const momentUnit = unitLabel('moment', unitSystem);
+  const indicativeNotes = indicativeReasons(designResults);
 
   return (
     <div className="flex flex-col h-full">
@@ -92,7 +94,18 @@ export function ResultsPanel() {
                     <tr key={dr.elementId} className="hover:bg-slate-800 transition-colors">
                       <td className="px-4 py-2 font-mono font-bold text-accent">{dr.elementId}</td>
                       <td className="px-4 py-2 text-slate-400">{dr.material}</td>
-                      <td className="px-4 py-2 text-right font-mono font-bold">{dr.ratio.toFixed(3)}</td>
+                      <td className="px-4 py-2 text-right font-mono font-bold">
+                        {dr.ratio.toFixed(3)}
+                        {dr.indicative && (
+                          <span
+                            className="ml-0.5 font-normal text-amber-400 cursor-help"
+                            title={`Indicative: ${dr.indicative.reason}`}
+                            aria-label="indicative"
+                          >
+                            {INDICATIVE_MARK}
+                          </span>
+                        )}
+                      </td>
                       <td className="px-4 py-2 text-right">
                         <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
                           isPass ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
@@ -105,6 +118,11 @@ export function ResultsPanel() {
                 })}
               </tbody>
             </table>
+            {indicativeNotes.map((reason) => (
+              <p key={reason} className="px-4 pt-2 text-[10px] leading-snug text-slate-500">
+                <span className="text-amber-400">{INDICATIVE_MARK}</span> Indicative: {reason}
+              </p>
+            ))}
           </div>
         )}
       </div>

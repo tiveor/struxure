@@ -11,6 +11,7 @@ import type { AnimationMode } from '../../utils/animation';
 import { getSchemeColor } from '../../utils/color-ramp';
 import type { HeatmapVariable, ColorScheme } from '../../utils/color-ramp';
 import { track } from '../../utils/analytics';
+import { INDICATIVE_MARK, indicativeReasons } from '../../design/indicative';
 import type { DiagramType } from '../../store/ui-store';
 
 export function Viewport3D() {
@@ -334,8 +335,11 @@ const HEATMAP_LABELS: Record<HeatmapVariable, string> = {
   combined_stress: 'Combined',
 };
 
-function ColorLegend({ scheme, variable }: { scheme: ColorScheme; variable: HeatmapVariable }) {
+export function ColorLegend({ scheme, variable }: { scheme: ColorScheme; variable: HeatmapVariable }) {
   const steps = 10;
+  const designResults = useResultsStore((s) => s.designResults);
+  // Only the D/C heatmap colours by design ratio, so only it carries the note.
+  const indicativeNotes = variable === 'dc_ratio' ? indicativeReasons(designResults) : [];
   return (
     <div className="absolute bottom-6 left-4 z-10">
       <div className="bg-slate-800/90 backdrop-blur-md rounded-lg shadow-xl border border-slate-700 p-3 w-16">
@@ -359,6 +363,14 @@ function ColorLegend({ scheme, variable }: { scheme: ColorScheme; variable: Heat
           <span className="text-[8px] text-slate-400">Min</span>
           <span className="text-[8px] text-slate-400">Max</span>
         </div>
+        {indicativeNotes.length > 0 && (
+          <p
+            className="mt-1.5 text-[8px] leading-tight text-slate-400 text-center cursor-help"
+            title={indicativeNotes.map((r) => `${INDICATIVE_MARK} ${r}`).join('\n')}
+          >
+            <span className="text-amber-400">{INDICATIVE_MARK}</span> Indicative
+          </p>
+        )}
       </div>
     </div>
   );

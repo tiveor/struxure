@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import type { Material, Section } from '../../core/types';
 import { checkFlexure } from '../aci318/flexure';
 import { checkShear } from '../aci318/shear';
-import { checkColumn } from '../aci318/columns';
+import { checkColumn, ASSUMED_COLUMN_RHO } from '../aci318/columns';
 import { designConcreteElement } from '../aci318';
 
 /**
@@ -242,14 +242,39 @@ describe('ACI 318 — element dispatch', () => {
     // Column threshold is P > 0.1*f'c*Ag = 0.1*4*288 = 115.2 kips.
     const r = designConcreteElement('E1', 10, 20, 1200, C4000, BEAM_12x24);
     expect(r.details.shearRatio).toBeGreaterThan(0);
-    expect(r.details.AsRequired).toBeGreaterThan(0);
+    expect(r.details).toHaveProperty('AsRequired');
+    expect((r.details as { AsRequired: number }).AsRequired).toBeGreaterThan(0);
   });
 
   it('treats a high-axial element as a column', () => {
     const r = designConcreteElement('E2', 200, 20, 1200, C4000, BEAM_12x24);
-    // The column branch reports no shear check and nominal 1% steel.
+    // The column branch reports no shear check.
     expect(r.details.shearRatio).toBe(0);
-    expect(r.details.AsRequired).toBeCloseTo(0.01 * 288, 6);
+  });
+
+  it('keeps the column D/C ratio equal to checkColumn', () => {
+    const r = designConcreteElement('E2', 200, 20, 1200, C4000, BEAM_12x24);
+    expect(r.ratio).toBe(checkColumn(200, 1200, C4000, BEAM_12x24).ratio);
+  });
+
+  it('reports the assumed column steel as an assumption, not as AsRequired', () => {
+    // Issue #25: the 1% steel is an input assumption of checkColumn. Echoing
+    // it as AsRequired made it look like a computed requirement.
+    const r = designConcreteElement('E2', 200, 20, 1200, C4000, BEAM_12x24);
+    expect(r.details).not.toHaveProperty('AsRequired');
+    expect(r.details).toHaveProperty('rhoAssumed', ASSUMED_COLUMN_RHO);
+    expect(ASSUMED_COLUMN_RHO).toBe(0.01);
+  });
+
+  it('flags a column result as indicative, with a reason', () => {
+    const r = designConcreteElement('E2', 200, 20, 1200, C4000, BEAM_12x24);
+    expect(r.indicative).toBeDefined();
+    expect(r.indicative?.reason).toMatch(/1% steel/);
+  });
+
+  it('does not flag a beam result as indicative', () => {
+    const r = designConcreteElement('E1', 10, 20, 1200, C4000, BEAM_12x24);
+    expect(r.indicative).toBeUndefined();
   });
 
   it('reports the governing ratio and a matching status', () => {

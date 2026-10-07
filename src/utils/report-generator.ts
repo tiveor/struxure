@@ -7,6 +7,7 @@ import autoTable from 'jspdf-autotable';
 import type { StructuralModel, AnalysisResults } from '../core/types';
 import type { DesignCheckResult } from '../design/types';
 import { DESIGN_BANDS } from './color-ramp';
+import { INDICATIVE_MARK, indicativeReasons } from '../design/indicative';
 
 export interface ReportOptions {
   projectName?: string;
@@ -523,17 +524,25 @@ function addElementForcesTable(doc: jsPDF, model: StructuralModel, results: Anal
   });
 }
 
+/**
+ * Rows of the design checks table. An indicative ratio carries the
+ * INDICATIVE_MARK, keyed to the footnotes from `indicativeReasons`.
+ */
+export function designChecksTableBody(designResults: DesignCheckResult[]): string[][] {
+  return designResults.map((dc) => [
+    dc.elementId,
+    dc.material.toUpperCase(),
+    dc.indicative ? `${formatDCRatio(dc.ratio)} ${INDICATIVE_MARK}` : formatDCRatio(dc.ratio),
+    dc.status.toUpperCase(),
+  ]);
+}
+
 function addDesignChecksTable(doc: jsPDF, designResults: DesignCheckResult[], margin: number, y: number) {
   autoTable(doc, {
     startY: y,
     margin: { left: margin, right: margin },
     head: [['Element', 'Material', 'D/C Ratio', 'Status']],
-    body: designResults.map((dc) => [
-      dc.elementId,
-      dc.material.toUpperCase(),
-      formatDCRatio(dc.ratio),
-      dc.status.toUpperCase(),
-    ]),
+    body: designChecksTableBody(designResults),
     styles: { fontSize: 8, cellPadding: 2 },
     headStyles: { fillColor: [59, 130, 246], textColor: [255, 255, 255], fontStyle: 'bold' },
     alternateRowStyles: { fillColor: [248, 250, 252] },
@@ -560,6 +569,26 @@ function addDesignChecksTable(doc: jsPDF, designResults: DesignCheckResult[], ma
       }
     },
   });
+
+  // Footnotes for ratios marked as indicative (screening estimates).
+  const notes = indicativeReasons(designResults);
+  if (notes.length === 0) return;
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const contentWidth = doc.internal.pageSize.getWidth() - 2 * margin;
+  let noteY = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 6;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(71, 85, 105); // Slate-500
+  for (const reason of notes) {
+    const lines = doc.splitTextToSize(`${INDICATIVE_MARK} Indicative: ${reason}`, contentWidth);
+    const height = lines.length * 3.5;
+    if (noteY + height > pageHeight - 20) {
+      doc.addPage();
+      noteY = 20;
+    }
+    doc.text(lines, margin, noteY);
+    noteY += height + 1.5;
+  }
 }
 
 // ─── Footer ──────────────────────────────────────────────────────────
