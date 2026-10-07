@@ -2,6 +2,12 @@ import { Matrix } from 'ml-matrix';
 import type { StructuralNode } from './types';
 
 /**
+ * A member counts as parallel to global Y when the component of its unit
+ * direction perpendicular to Y is below this value (about 0.00006 degrees).
+ */
+export const VERTICAL_TOLERANCE = 1e-6;
+
+/**
  * Compute the 3x3 rotation matrix from local to global coordinates
  * for a 3D frame element.
  *
@@ -32,22 +38,30 @@ export function rotationMatrix3x3(
   const mx = dy / L;
   const nx = dz / L;
 
-  // Reference vector for defining local y-z plane
-  // If element is vertical (parallel to global Y), use global Z as reference
-  const isVertical = Math.abs(mx) > 0.999;
+  // Reference vector for defining the local y-z plane.
+  // The default reference is global Y, which gives local z = x × Y. It only
+  // degenerates when the member is parallel to Y, so the special case is a
+  // true degeneracy check rather than a cone: a cone made members a few
+  // degrees off vertical switch to a different local z, and therefore bend in
+  // plane about a different section axis than their neighbours.
+  const isVertical = Math.sqrt(lx * lx + nx * nx) < VERTICAL_TOLERANCE;
 
   let ly: number, my: number, ny: number;
   let lz: number, mz: number, nz: number;
 
   if (isVertical) {
-    // Element is vertical: use global Z as reference
-    // local z = cross(local_x, global_Z) then normalize
-    // global Z = (0, 0, 1)
-    // cross(x, Z) = (mx*1 - nx*0, nx*0 - lx*1, lx*0 - mx*0) = (mx, -lx, 0)
-    const tempLen = Math.sqrt(mx * mx + lx * lx);
-    lz = mx / tempLen;
-    mz = -lx / tempLen;
-    nz = 0;
+    // Member parallel to global Y: take local z as global +Z, projected to be
+    // exactly orthogonal to local x. This is the limit of x × Y as a member in
+    // the XY plane tilts towards vertical from +X, so a column in an XY frame
+    // bends in plane about its strong axis (Ix), like every other member.
+    // z = Z - (x·Z) x, then normalize. Here |nx| < 1e-6, so its length is ~1.
+    const zx = -nx * lx;
+    const zy = -nx * mx;
+    const zz = 1 - nx * nx;
+    const zLen = Math.sqrt(zx * zx + zy * zy + zz * zz);
+    lz = zx / zLen;
+    mz = zy / zLen;
+    nz = zz / zLen;
 
     // local y = cross(local_z, local_x)
     ly = mz * nx - nz * mx;

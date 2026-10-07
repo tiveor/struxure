@@ -86,13 +86,44 @@ describe('rotationMatrix3x3', () => {
     expect(det3(R)).toBeCloseTo(1, 12);
   });
 
-  it('documents the current local axes of a vertical member', () => {
-    // Pins the existing convention so a change to it is deliberate. For a
-    // member along +Y the code takes local z = x cross global Z, normalized:
-    //   (0, 1, 0) x (0, 0, 1) = (1, 0, 0)
-    // and local y = z cross x:
-    //   (1, 0, 0) x (0, 1, 0) = (0, 0, 1)
+  it('takes local z as global +Z for a member along +Y, so in-plane bending is about Ix', () => {
+    // Pins the vertical-member convention (#66). For x = (0, 1, 0) local z is
+    // global +Z, the limit of x cross Y as a member in the XY plane tilts to
+    // vertical from +X. Local y = z cross x:
+    //   (0, 0, 1) x (0, 1, 0) = (-1, 0, 0)
+    // Bending in the XY plane is then about local z, the strong axis (Ix),
+    // exactly as for a beam along +X.
     expectMatrixCloseTo(rotationMatrix3x3(ORIGIN, node(0, 144, 0), 0), [
+      [0, 1, 0],
+      [-1, 0, 0],
+      [0, 0, 1],
+    ]);
+  });
+
+  it('takes local z as global +Z for a member along -Y as well', () => {
+    // x = (0, -1, 0): y = z cross x = (0, 0, 1) x (0, -1, 0) = (1, 0, 0).
+    expectMatrixCloseTo(rotationMatrix3x3(ORIGIN, node(0, -144, 0), 0), [
+      [0, -1, 0],
+      [1, 0, 0],
+      [0, 0, 1],
+    ]);
+  });
+
+  it('keeps a nearly vertical member on the default branch, with local z = +Z', () => {
+    // 0.01 deg off vertical is far outside VERTICAL_TOLERANCE, so x cross Y is
+    // used: for x = (sin t, cos t, 0), z = (0, 0, sin t)/|sin t| = (0, 0, 1).
+    const t = (0.01 * Math.PI) / 180;
+    const R = rotationMatrix3x3(ORIGIN, node(Math.sin(t), Math.cos(t), 0), 0);
+    expect(R.get(2, 2)).toBeCloseTo(1, 12);
+    expectMatrixCloseTo(R.mmul(R.transpose()), identity(3));
+    expect(det3(R)).toBeCloseTo(1, 12);
+  });
+
+  it('rotates a vertical member by beta about its axis', () => {
+    // beta = 90 deg rotates (y, z) about x: y' = z, z' = -y.
+    // For x = +Y: y' = (0, 0, 1), z' = (1, 0, 0), so in-plane bending in XY
+    // is about the weak axis, which is how beta selects weak-axis columns.
+    expectMatrixCloseTo(rotationMatrix3x3(ORIGIN, node(0, 144, 0), 90), [
       [0, 1, 0],
       [0, 0, 1],
       [1, 0, 0],
@@ -163,24 +194,22 @@ describe('rotationMatrix3x3', () => {
     expect(() => rotationMatrix3x3(ORIGIN, node(0, 0, 0), 0)).toThrow('zero length');
   });
 
-  // Skipped on purpose: this exposes a discontinuity in the solver, reported
-  // separately and not fixed here. The vertical-member branch is taken when
-  // |m_x| > 0.999, i.e. within about 2.56 deg of global Y. Just outside that
-  // cone local z is global Z; just inside it, local z jumps to (almost) global
-  // X. Two members of an XY frame tilted 87 and 88 deg from horizontal then
-  // swap the axis used for in-plane bending (Ix vs Iy), which changes their
-  // in-plane stiffness by a factor of Ix/Iy. A rotation that varies
-  // continuously with the member direction must keep local z near +Z here.
-  it.skip('keeps local z continuous as a member in the XY plane approaches vertical', () => {
+  // Regression for #66. The vertical-member branch used to be taken when
+  // |m_x| > 0.999, about 2.56 deg around global Y, where local z jumped to
+  // (almost) global X. Members tilted 87 and 88 deg from horizontal then bent
+  // in plane about Ix and Iy respectively.
+  it('keeps local z continuous as a member in the XY plane approaches vertical', () => {
     const at = (deg: number) => {
       const t = (deg * Math.PI) / 180;
       return rotationMatrix3x3(ORIGIN, node(Math.cos(t), Math.sin(t), 0), 0);
     };
-    const below = at(87);
-    const above = at(88);
-    // Local z of both members should be (0, 0, 1).
-    expect(below.get(2, 2)).toBeCloseTo(1, 6);
-    expect(above.get(2, 2)).toBeCloseTo(1, 6);
+    // Local z of every member from 80 deg up to vertical is (0, 0, 1).
+    for (const deg of [80, 87, 88, 89.9, 89.999, 90]) {
+      const R = at(deg);
+      expect(R.get(2, 0)).toBeCloseTo(0, 6);
+      expect(R.get(2, 1)).toBeCloseTo(0, 6);
+      expect(R.get(2, 2)).toBeCloseTo(1, 6);
+    }
   });
 });
 
