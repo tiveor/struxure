@@ -99,11 +99,11 @@ function extractModel(
   // Try analytical model first
   const analyticalIds = api.GetLineIDsWithType(modelID, WebIFC.IFCSTRUCTURALANALYSISMODEL);
   if (analyticalIds.size() > 0) {
-    return extractAnalyticalModel(api, modelID, unitFactor, tolerance, warnings);
+    return extractAnalyticalModel(api, modelID, lengthUnit, unitFactor, tolerance, warnings);
   }
 
   // Fallback: physical elements
-  return extractPhysicalElements(api, modelID, unitFactor, tolerance, options, warnings);
+  return extractPhysicalElements(api, modelID, lengthUnit, unitFactor, tolerance, options, warnings);
 }
 
 // ─── Detect length unit ──────────────────────────────────────────────
@@ -137,6 +137,7 @@ function detectLengthUnit(api: WebIFC.IfcAPI, modelID: number): string {
 function extractAnalyticalModel(
   api: WebIFC.IfcAPI,
   modelID: number,
+  lengthUnit: string,
   unitFactor: number,
   tolerance: number,
   warnings: string[],
@@ -188,7 +189,8 @@ function extractAnalyticalModel(
   const sections: Section[] = [];
   let sIdx = 0;
   for (const [key, profile] of profileMap) {
-    const section = ifcProfileToSection(profile, 'INCH', sIdx);
+    // Profile dimensions are stored raw, in the file's length unit; convert them here.
+    const section = ifcProfileToSection(profile, lengthUnit, sIdx);
     section.id = key;
     section.name = key;
     sections.push(section);
@@ -548,6 +550,7 @@ function extractEndpointsLazy(
 function extractPhysicalElements(
   api: WebIFC.IfcAPI,
   modelID: number,
+  lengthUnit: string,
   unitFactor: number,
   tolerance: number,
   options: IfcImportOptions,
@@ -625,7 +628,8 @@ function extractPhysicalElements(
   const profileKeyToSectionId = new Map<string, string>();
   let sIdx = 0;
   for (const [key, profile] of profileMap) {
-    const section = ifcProfileToSection(profile, 'INCH', sIdx); // Already converted via unitFactor
+    // Profile dimensions are stored raw, in the file's length unit; convert them here.
+    const section = ifcProfileToSection(profile, lengthUnit, sIdx);
     section.id = key;
     section.name = key;
     sections.push(section);
