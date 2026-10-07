@@ -12,7 +12,7 @@ describe('metric material library', () => {
   it.each([
     ['S235 (MPa)', 235, 360],
     ['S275 (MPa)', 275, 430],
-    ['S355 (MPa)', 355, 490],
+    ['S355 (MPa)', 355, 510],
   ])('stores %s in internal units and shows its native MPa values', (name, fy, fu) => {
     const m = byName(MATERIAL_LIBRARY.steel, name);
     expect(m.group).toBe('EN 10025 (MPa)');

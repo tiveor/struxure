@@ -111,10 +111,8 @@ const aciConcretes: NativeEntry[] = [
 // ─── Steel grades (EN 10025, metric) ────────────────────────────────
 // Stored in MPa and kg/m³, converted to internal units at load.
 // fy and fu are the nominal values for EN 10025-2 grades with thickness
-// t <= 40 mm, as EN 1993-1-1 tabulates them for design: 235/360, 275/430
-// and 355/490 MPa. EN 1993-1-1:2005 Table 3.1 lists fu = 510 MPa for S355;
-// 490 MPa is the lower, conservative value. Check the edition your project
-// uses. fu does not enter the current AISC checks.
+// t <= 40 mm, as EN 1993-1-1:2005 Table 3.1 tabulates them for design:
+// 235/360, 275/430 and 355/510 MPa. fu does not enter the current AISC checks.
 // E = 210000 MPa, G = 81000 MPa per EN 1993-1-1:2005 3.2.6(1).
 // Density 7850 kg/m³ per EN 1991-1-1:2002 Table A.4.
 
@@ -123,7 +121,7 @@ const EN_STEEL = { type: 'steel' as const, E: 210000, G: 81000, density: 7850 };
 const enSteels: NativeEntry[] = [
   { name: 'S235 (MPa)', category: 't ≤ 40 mm', ...EN_STEEL, fy: 235, fu: 360 },
   { name: 'S275 (MPa)', category: 't ≤ 40 mm', ...EN_STEEL, fy: 275, fu: 430 },
-  { name: 'S355 (MPa)', category: 't ≤ 40 mm', ...EN_STEEL, fy: 355, fu: 490 },
+  { name: 'S355 (MPa)', category: 't ≤ 40 mm', ...EN_STEEL, fy: 355, fu: 510 },
 ];
 
 // ─── Concrete grades (ACI 318M, metric) ─────────────────────────────
