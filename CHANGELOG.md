@@ -1,19 +1,82 @@
 # Changelog
 
-## Unreleased
+## v0.4.0
+
+Validating every core module in isolation surfaced four defects that changed
+results, all fixed here. **Re-run any model from v0.3.1 or earlier**, in
+particular one with steel members in compression, distributed loads on
+members that reach a support, vertical columns, or HEA and small W sections.
+This release also adds metric input and output end to end, a European section
+library, and real reinforcement for concrete columns.
+
+### Results change
+
+- **Compressed steel members were checked in tension (#62).** The design
+  runner read the axial end force with the wrong sign, so buckling never ran
+  for compressed members and tension members were checked for buckling. A
+  W12x26 column under 100 kips of compression went from a compression ratio
+  of 0 to 0.565. The axial force diagram and the results panel had the same
+  flip and now show tension as positive.
+- **Support reactions ignored distributed loads (#60).** Reactions were K·u
+  minus the nodal loads only, so a simply supported beam under 1 kip/in over
+  120 in reported zero reactions instead of 60 kips at each end.
+  Displacements and member forces were already correct.
+- **Vertical columns bent about their weak axis (#67).** With beta = 0, a
+  vertical member in an XY frame bent in plane about Iy, and members within
+  about 2.56° of vertical switched axis convention. Columns now bend in plane
+  about Ix like beams; use beta = 90 for a weak-axis column. The 3D view,
+  force diagrams and the combined stress heatmap now use the same local axes.
+- **Flange local buckling (#65).** AISC flexure now applies F3, so HEA 180 to
+  320 and W10x12, W8x31, W8x10, W6x15 and W6x9, which have noncompact flanges,
+  lose up to about 4% of their flexural capacity.
+
+### Added
+
+- **Metric units end to end (#63, #64, #65).** Conventional SI display (m,
+  mm for sections, kN, kN-m, kN/m, MPa), the PDF report and CSV in the
+  selected system (A4 for metric), unit-tagged model files that also open
+  `kN-m-MPa` and `N-mm-MPa`, and an AI assistant that works in the user's
+  units. The core stays in kip-in-ksi and converts at every boundary.
+- **European sections (#65).** IPE, HEA and HEB, 56 shapes from EN 10365,
+  with an AISC/EN tab in the section picker.
+- **Metric materials (#64).** EN 10025 S235, S275 and S355 and concrete
+  f'c 21 to 35 MPa.
+- **Concrete column reinforcement (#61).** Sections take bars, ties, cover
+  and rebar fy, and the ACI 318-19 check builds the real P-M diagram by strain
+  compatibility. Columns without bars keep the screening check, marked † as
+  indicative (#55).
+- **Custom steel I-sections (#65)** take d, bf, tf, tw, Sx and Zx, so flexure
+  no longer falls back to a 12 in depth.
+- **Design checks return their capacity (#43)**, not only the D/C ratio.
 
 ### Fixed
 
-- **Vertical columns bent about their weak axis (#66).** With beta = 0, a
-  vertical member in an XY frame bent in plane about Iy, and members within
-  about 2.56° of vertical switched axis convention. Local z is now global +Z
-  for every member in the XY plane, so columns bend in plane about Ix like
-  beams. **Results of models with vertical members change**: re-run them. Use
-  beta = 90 for a column that is meant to bend about its weak axis.
-- The 3D view draws each section with the analysis local axes and beta, so
-  I-shapes in a plane frame show their web in the plane. Force diagrams are
-  drawn along each member's local y, and the combined stress heatmap uses the
-  strong-axis moment instead of the weak-axis one.
+- **IFC units (#58).** Import never converted profile dimensions, so a
+  millimetre IPE300 came in 300 in deep. Export wrote reaction moments in N-in
+  while declaring millimetres.
+- **The AI provider key (#53)** is kept for the tab only by default instead of
+  in localStorage, with an opt-in to remember it and a warning where it is
+  entered. Keys saved by earlier versions move to session storage on load.
+- **Stale selection (#56).** Loading or clearing a model left the old node or
+  element selected, and Update could write its values back.
+- **Editors (#63)** keep drafts in internal units, so switching units mid-edit
+  no longer saves a wrong value, and small properties like J = 0.3 can be
+  entered.
+- Model JSON is validated on open (#34). Material and section names are shown
+  instead of raw ids (#33). Load editor labels are associated with their
+  inputs (#29) and status bar controls are keyboard accessible (#30).
+- The docs no longer claim Pipe sections, which the library never had.
+
+### Tests
+
+- Every core solver module is validated in isolation against closed-form
+  solutions (#44, #57), plus reactions under member loads, vertical members,
+  the reinforced column P-M diagram, AISC F3 and the node and element editors
+  (#54). The suite has 817 tests and none skipped.
+
+### Thanks
+
+- @LouisDeconinck for #29, #30, #33, #34 and #35.
 
 ## v0.3.1
 
