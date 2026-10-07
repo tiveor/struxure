@@ -12,6 +12,7 @@ import type { ElementEndForces } from '../../core/internal-forces-distribution';
 import type { DiagramType } from '../../store/ui-store';
 import type { UnitSystem } from '../../utils/units';
 import { formatDiagramPeak } from './diagram-labels';
+import { rotationMatrix3x3 } from '../../core/transformation';
 
 const DIAGRAM_COLORS = {
   moment_M3: { pos: '#3b82f6', neg: '#ef4444' },
@@ -47,6 +48,7 @@ export function ForceDiagram3D() {
       points: Array<{ x: number; N: number; V2: number; M3: number }>;
       start: THREE.Vector3;
       end: THREE.Vector3;
+      localY: THREE.Vector3;
     }> = [];
 
     // Compute distributions for all elements
@@ -75,8 +77,13 @@ export function ForceDiagram3D() {
       const dl = distributedLoads.find((d) => d.elementId === elem.id);
       const wy = dl?.wy ?? 0;
 
+      // N, V2 and M3 all act in the member's local x-y plane, so the diagram
+      // is drawn along local y, the same axis the analysis bends about.
+      const R = rotationMatrix3x3(nodeI, nodeJ, elem.betaAngle);
+      const localY = new THREE.Vector3(R.get(1, 0), R.get(1, 1), R.get(1, 2));
+
       const points = getInternalForcesDistribution(L, endForces, wy, 20);
-      allDistributions.push({ elementId: elem.id, points, start, end });
+      allDistributions.push({ elementId: elem.id, points, start, end, localY });
     }
 
     // Find global max for normalization
@@ -102,6 +109,7 @@ export function ForceDiagram3D() {
           points={dist.points}
           start={dist.start}
           end={dist.end}
+          localY={dist.localY}
           component={component}
           globalMax={globalMax}
           scale={diagramScale}
@@ -118,6 +126,8 @@ interface ElementDiagramProps {
   points: Array<{ x: number; N: number; V2: number; M3: number }>;
   start: THREE.Vector3;
   end: THREE.Vector3;
+  /** The member's local y axis in global coordinates; the diagram is drawn along it. */
+  localY: THREE.Vector3;
   component: 'N' | 'V2' | 'M3';
   globalMax: number;
   scale: number;
@@ -127,19 +137,13 @@ interface ElementDiagramProps {
 }
 
 function ElementDiagram({
-  points, start, end, component, globalMax, scale, colors, showValues, unitSystem,
+  points, start, end, localY, component, globalMax, scale, colors, showValues, unitSystem,
 }: ElementDiagramProps) {
   const { geometry, maxPoint, maxWorldPos } = useMemo(() => {
     const direction = new THREE.Vector3().subVectors(end, start);
     const L = direction.length();
-    const axisDir = direction.clone().normalize();
 
-    // Find a perpendicular direction for the diagram offset
-    const up = new THREE.Vector3(0, 1, 0);
-    let perpDir = new THREE.Vector3().crossVectors(axisDir, up);
-    if (perpDir.length() < 0.001) {
-      perpDir = new THREE.Vector3().crossVectors(axisDir, new THREE.Vector3(1, 0, 0));
-    }
+    const perpDir = localY.clone();
     perpDir.normalize();
 
     const positions: number[] = [];
@@ -203,7 +207,7 @@ function ElementDiagram({
       maxPoint: maxPt,
       maxWorldPos: maxWorldPosition,
     };
-  }, [points, start, end, component, globalMax, scale, colors]);
+  }, [points, start, end, localY, component, globalMax, scale, colors]);
 
   return (
     <group>

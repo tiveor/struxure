@@ -157,7 +157,8 @@ between the anchors is validated.
 | `solveModel` end-to-end (K·u = F, reactions, element forces) | Validated against analytical beam solutions |
 | Internal force distribution along members | Self-consistent |
 | Local element stiffness matrix and fixed-end forces (`local-stiffness.ts`) | Validated against the closed-form space-frame element matrix, entry by entry, plus symmetry and the six rigid-body modes |
-| 3D transformation (`transformation.ts`) | Validated against the direction-cosine rotation matrix: identity along X, plane rotation about Z, beta rotation about local x, orthonormal and right-handed, block-diagonal 12x12. See the caveat below on near-vertical members |
+| 3D transformation (`transformation.ts`) | Validated against the direction-cosine rotation matrix: identity along X, plane rotation about Z, beta rotation about local x, orthonormal and right-handed, block-diagonal 12x12. Vertical and near-vertical members keep local z = +Z in the XY plane (continuity from 80° to 90°) |
+| Vertical members (`vertical-members.test.ts`) | Validated through `solveModel` against AISC Manual Table 3-23 case 22: a vertical cantilever bends in plane about Ix (P L³/3EIx) and out of plane about Iy, beta = 90 swaps them, tilts from 80° to 90° all give P L³/3EIx, and a fixed-base portal with a rigid girder sways P h³/24EIx with base shears P/2 and end moments P h/4 |
 | Global assembly (`assembler.ts`) | Validated: two collinear elements sum at the shared node term by term, an inclined element matches the closed-form plane-frame global matrix, and nodal and uniform-load equivalent forces land on the right DOFs |
 | Boundary conditions (`boundary-conditions.ts`) | Validated: DOF numbering of restraints, free/restrained partition, and the reduced cantilever system solved against PL³/3EI and PL²/2EI |
 | Matrix helpers (`matrix-utils.ts`) | Validated against hand-worked products, the plane truss bar Tᵀ·k·T, and direct-stiffness scatter of two springs |
@@ -170,17 +171,19 @@ in the weak-axis coupling term of the local stiffness matrix passes the entire
 the weak-axis bending DOFs are never excited and the wrong term never reaches
 a result.
 
-### Known open defects in the analysis engine
+### Local axes of vertical members (fixed, #66)
 
-One defect surfaced while validating the core modules in isolation. It is
-pinned by a skipped test that states the correct expectation, so it can be
-enabled once the fix lands.
-
-- **Local axes jump near vertical** (`transformation.ts`). Members within
-  about 2.56° of global Y switch to a different local y/z convention, so two
-  members tilted 87° and 88° from horizontal in the XY plane bend in plane
-  about different section axes (Ix vs Iy). A perfectly vertical column in an
-  XY frame with beta = 0 also bends in plane about its weak axis.
+Members within about 2.56° of global Y used to switch to a different local
+y/z convention, so a vertical column in an XY frame with beta = 0 bent in
+plane about its weak axis (Iy), and members tilted 87° and 88° bent about
+different axes. Local z is now global +Z for every member in the XY plane,
+vertical ones included, so in-plane bending is about the strong axis (Ix)
+unless beta says otherwise; beta = 90 gives a weak-axis column. The special
+case only applies to a member exactly parallel to Y (within 1e-6). **Results
+of models with vertical members change**: in-plane column stiffness goes from
+EIy to EIx, so drift drops and column moments redistribute. The 3D view now
+draws each profile with the same local axes, force diagrams are drawn along
+local y, and the combined stress heatmap uses the strong-axis moment.
 
 ## Known unit pitfalls
 
