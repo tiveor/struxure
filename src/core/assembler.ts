@@ -48,7 +48,7 @@ export function elementDofIndices(
  * - elementLocalStiffness: local K per element (for post-processing)
  */
 export function assembleGlobalSystem(model: StructuralModel) {
-  const { nodes, elements, materials, sections, nodalLoads, distributedLoads } = model;
+  const { nodes, elements, materials, sections } = model;
 
   const nodeIndexMap = buildNodeIndexMap(nodes);
   const nodeMap = new Map(nodes.map((n) => [n.id, n]));
@@ -57,7 +57,6 @@ export function assembleGlobalSystem(model: StructuralModel) {
 
   const totalDof = nodes.length * DOF_PER_NODE;
   const K = Matrix.zeros(totalDof, totalDof);
-  const F = Matrix.zeros(totalDof, 1);
 
   // Storage for post-processing
   const elementTransformations = new Map<string, Matrix>();
@@ -87,6 +86,36 @@ export function assembleGlobalSystem(model: StructuralModel) {
     // Add to global stiffness matrix
     addSubMatrix(K, Ke_global, dofs, dofs);
   }
+
+  // Equivalent nodal load vector (nodal loads plus member load equivalents)
+  const F = assembleLoadVector(model, nodeIndexMap, elementTransformations);
+
+  return {
+    K,
+    F,
+    nodeIndexMap,
+    elementTransformations,
+    elementLocalStiffness,
+    totalDof,
+  };
+}
+
+/**
+ * Assemble the global equivalent nodal load vector F (N x 1).
+ *
+ * F holds the applied nodal loads plus the equivalent nodal loads of every
+ * member load (the fixed-end forces of each uniform load, rotated from local
+ * to global axes with Tᵀ). It is the right-hand side of K · u = F, and the
+ * post-processor subtracts the same vector from K · u to get the reactions.
+ */
+export function assembleLoadVector(
+  model: StructuralModel,
+  nodeIndexMap: Map<string, number>,
+  elementTransformations: Map<string, Matrix>
+): Matrix {
+  const { nodes, elements, nodalLoads, distributedLoads } = model;
+  const nodeMap = new Map(nodes.map((n) => [n.id, n]));
+  const F = Matrix.zeros(nodes.length * DOF_PER_NODE, 1);
 
   // Apply nodal loads
   for (const load of nodalLoads) {
@@ -120,12 +149,5 @@ export function assembleGlobalSystem(model: StructuralModel) {
     }
   }
 
-  return {
-    K,
-    F,
-    nodeIndexMap,
-    elementTransformations,
-    elementLocalStiffness,
-    totalDof,
-  };
+  return F;
 }

@@ -63,6 +63,7 @@ export function solveModel(model: StructuralModel): AnalysisResults {
     model,
     displacements,
     K,
+    F,
     nodeIndexMap,
     elementTransformations,
     elementLocalStiffness,
