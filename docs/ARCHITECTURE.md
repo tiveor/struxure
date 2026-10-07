@@ -115,7 +115,11 @@ dispatches by `material.type`:
 
 - `'steel'` → `designSteelElement` from `src/design/aisc360/index.ts`,
   which runs `tension.ts`, `compression.ts`, `flexure.ts`, and combines the
-  axial and flexural ratios via `combined.ts` (P-M interaction).
+  axial and flexural ratios via `combined.ts` (P-M interaction). The runner
+  passes the governing tension and the governing compression over both ends
+  separately. Element end forces are the forces the nodes exert on the
+  element, so the internal axial force (positive = tension) is
+  `-startForces[0]` at node I and `endForces[0]` at node J.
 - `'concrete'` → `designConcreteElement` from `src/design/aci318/index.ts`,
   which treats the element as a column (`columns.ts`) if the axial load
   exceeds `0.1·f'c·Ag`, otherwise as a beam using `flexure.ts` and

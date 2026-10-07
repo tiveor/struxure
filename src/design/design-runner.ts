@@ -32,7 +32,18 @@ export function runDesign(
       Math.abs(forces.startForces[0]),
       Math.abs(forces.endForces[0])
     );
-    const axialSign = forces.startForces[0]; // Positive = tension in convention
+
+    // Element end forces are the forces each node exerts on the element, in
+    // local axes. The internal axial force (positive = tension) is therefore
+    // -startForces[0] at node I and +endForces[0] at node J; a compressed
+    // member has startForces[0] > 0 and endForces[0] < 0. An axial member load
+    // (wx) makes the axial force vary linearly along the member, so its
+    // extremes are at the ends and one end can be in tension while the other
+    // is in compression. Both are checked.
+    const axialI = -forces.startForces[0];
+    const axialJ = forces.endForces[0];
+    const maxTension = Math.max(0, axialI, axialJ);
+    const maxCompression = Math.max(0, -axialI, -axialJ);
 
     const maxShear = Math.max(
       Math.abs(forces.startForces[1]),
@@ -47,7 +58,8 @@ export function runDesign(
     if (material.type === 'steel') {
       const result = designSteelElement(
         elem.id,
-        axialSign, // Positive = tension
+        maxTension,
+        maxCompression,
         maxMoment,
         material,
         section,

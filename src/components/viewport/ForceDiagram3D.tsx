@@ -60,9 +60,11 @@ export function ForceDiagram3D() {
       const L = start.distanceTo(end);
       if (L < 0.001) continue;
 
-      // Extract end forces: [N, V2, V3, T, M2, M3]
+      // Extract end forces: [N, V2, V3, T, M2, M3]. startForces[0] is the force
+      // node I exerts on the element along local x (positive = compression),
+      // so the internal axial force, positive = tension, is its negative.
       const endForces: ElementEndForces = {
-        Ni: forces.startForces[0],
+        Ni: -forces.startForces[0],
         V2i: forces.startForces[1],
         M3i: forces.startForces[5],
       };
