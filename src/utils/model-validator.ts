@@ -1,10 +1,24 @@
 import type { StructuralModel } from '../core/types';
 import { reinforcementErrors } from '../design/aci318/rebar';
+import {
+  INTERNAL_UNIT_TAG,
+  MODEL_SCHEMA_VERSION,
+  MODEL_UNIT_TAGS,
+  convertRawModel,
+  isModelUnitTag,
+} from './model-units';
+import type { ModelUnitTag } from './model-units';
 
 export interface ValidationResult {
   success: boolean;
+  /** The model in internal units (kip-in-ksi), without the file's tags. */
   model?: StructuralModel;
   errors: string[];
+  /**
+   * Problems that do not block loading but deserve a look, such as a value
+   * far outside the usual range for its unit. Present on success.
+   */
+  warnings?: string[];
 }
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
@@ -183,6 +197,77 @@ function checkSectionReinforcement(parsed: Record<string, unknown>): string[] {
   return errors;
 }
 
+/**
+ * Read the file-format tags. `schemaVersion` is optional (version 1 files
+ * have none) and `units` defaults to `fallback`: kip-in-ksi for saved files,
+ * so untagged files keep loading as before.
+ */
+export function readUnitTag(
+  parsed: Record<string, unknown>,
+  fallback: ModelUnitTag = INTERNAL_UNIT_TAG,
+): { units: ModelUnitTag; errors: string[] } {
+  const errors: string[] = [];
+  const version = parsed.schemaVersion;
+  if (version !== undefined && (typeof version !== 'number' || !Number.isInteger(version) || version < 1)) {
+    errors.push('"schemaVersion" must be a positive integer');
+  } else if (typeof version === 'number' && version > MODEL_SCHEMA_VERSION) {
+    errors.push(
+      `File uses schemaVersion ${version}, newer than this app supports (${MODEL_SCHEMA_VERSION}). Update Struxure to open it.`,
+    );
+  }
+  const units = parsed.units;
+  if (units === undefined) return { units: fallback, errors };
+  if (!isModelUnitTag(units)) {
+    errors.push(
+      `Unknown "units" ${JSON.stringify(units)}. Expected one of: ${MODEL_UNIT_TAGS.map((t) => `"${t}"`).join(', ')}`,
+    );
+    return { units: fallback, errors };
+  }
+  return { units, errors };
+}
+
+/**
+ * Convert a parsed model to internal units and drop the file-format tags, so
+ * callers get a plain `StructuralModel`.
+ */
+function toInternal(parsed: Record<string, unknown>, units: ModelUnitTag): Record<string, unknown> {
+  const converted = convertRawModel(parsed, units, INTERNAL_UNIT_TAG);
+  delete converted.schemaVersion;
+  delete converted.units;
+  return converted;
+}
+
+/**
+ * Usual ranges in ksi, wide enough for every grade the libraries carry. A
+ * value outside them usually means the file was written in other units
+ * than its tag says (steel E = 200000 under kip-in-ksi is MPa).
+ */
+const PLAUSIBLE_KSI: Record<string, Partial<Record<'E' | 'fy' | 'fc', [number, number]>>> = {
+  steel: { E: [25000, 32000], fy: [20, 150] },
+  concrete: { E: [1000, 10000], fc: [1.5, 20] },
+};
+
+/** Plausibility warnings, on a model already converted to internal units. */
+function plausibilityWarnings(model: StructuralModel, units: ModelUnitTag): string[] {
+  const warnings: string[] = [];
+  for (const m of model.materials) {
+    const ranges = PLAUSIBLE_KSI[m.type];
+    if (!ranges) continue;
+    for (const [field, range] of Object.entries(ranges)) {
+      const value = m[field as 'E' | 'fy' | 'fc'];
+      if (!range || value === undefined) continue;
+      const [lo, hi] = range;
+      if (value < lo || value > hi) {
+        warnings.push(
+          `Material "${m.id}": ${field} is ${Number(value.toPrecision(4))} ksi after reading the file as "${units}", ` +
+            `outside the usual ${lo} to ${hi} ksi for ${m.type}. Check the file's "units" tag.`,
+        );
+      }
+    }
+  }
+  return warnings;
+}
+
 /** Check that every referenced node/material/section/element ID exists. */
 function checkReferences(model: StructuralModel): string[] {
   const errors: string[] = [];
@@ -224,34 +309,49 @@ function checkSanity(model: StructuralModel): string[] {
 
 /**
  * Validate an already-parsed value as a structural model: required arrays,
- * cross-references and basic sanity — but no per-field type checks, so AI
+ * cross-references and basic sanity, but no per-field type checks, so AI
  * output can be coerced into shape first (see `ai-model-validator.ts`).
+ *
+ * Values are read in the units of the object's `units` tag, or in
+ * `defaultUnits` when it has none. The returned model is in internal units.
  */
-export function validateModelShape(parsed: unknown): ValidationResult {
+export function validateModelShape(
+  parsed: unknown,
+  defaultUnits: ModelUnitTag = INTERNAL_UNIT_TAG,
+): ValidationResult {
   if (!isRecord(parsed)) {
     return { success: false, errors: ['Expected a model object'] };
   }
 
-  const errors = [...checkRequiredArrays(parsed), ...checkItemsAreObjects(parsed)];
+  const tag = readUnitTag(parsed, defaultUnits);
+  const errors = [...tag.errors, ...checkRequiredArrays(parsed), ...checkItemsAreObjects(parsed)];
   if (errors.length > 0) {
     return { success: false, errors };
   }
 
-  const model = parsed as unknown as StructuralModel;
-  errors.push(...checkSectionReinforcement(parsed), ...checkReferences(model), ...checkSanity(model));
+  const internal = toInternal(parsed, tag.units);
+  const model = internal as unknown as StructuralModel;
+  errors.push(
+    ...checkSectionReinforcement(internal),
+    ...checkReferences(model),
+    ...checkSanity(model),
+  );
 
   if (errors.length > 0) {
     return { success: false, errors };
   }
 
-  return { success: true, model, errors: [] };
+  return { success: true, model, errors: [], warnings: plausibilityWarnings(model, tag.units) };
 }
 
 /**
  * Parse and strictly validate a saved `.json` model file. Unlike the AI path
- * this checks every field's type (no coercion — a saved file must match the
+ * this checks every field's type (no coercion: a saved file must match the
  * exported `StructuralModel` shape exactly) but not model completeness: an
  * empty or partially built model is valid data and must still load.
+ *
+ * Values are read in the units of the file's `units` tag (kip-in-ksi when
+ * absent) and converted to internal units.
  */
 export function validateModelJson(text: string): ValidationResult {
   let parsed: unknown;
@@ -265,21 +365,21 @@ export function validateModelJson(text: string): ValidationResult {
     return { success: false, errors: ['File does not contain a model object'] };
   }
 
-  const errors = [
-    ...checkRequiredArrays(parsed),
-    ...checkFieldTypes(parsed),
-    ...checkSectionReinforcement(parsed),
-  ];
+  const tag = readUnitTag(parsed);
+  const errors = [...tag.errors, ...checkRequiredArrays(parsed), ...checkFieldTypes(parsed)];
   if (errors.length > 0) {
     return { success: false, errors };
   }
 
-  const model = parsed as unknown as StructuralModel;
-  errors.push(...checkReferences(model));
+  // The reinforcement fit check compares the section with bar diameters in
+  // inches, so it and the checks after it run on the converted model.
+  const internal = toInternal(parsed, tag.units);
+  const model = internal as unknown as StructuralModel;
+  errors.push(...checkSectionReinforcement(internal), ...checkReferences(model));
 
   if (errors.length > 0) {
     return { success: false, errors };
   }
 
-  return { success: true, model, errors: [] };
+  return { success: true, model, errors: [], warnings: plausibilityWarnings(model, tag.units) };
 }

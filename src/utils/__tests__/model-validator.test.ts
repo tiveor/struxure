@@ -204,7 +204,7 @@ describe('extractAndValidateModel (AI path)', () => {
     // is the same class of omission as the betaAngle this already defaults.
     const ai = extractAndValidateModel(JSON.stringify({
       ...validModel,
-      materials: [{ id: 'M1', name: 'A992', type: 'steel', E: 29000, fy: 50 }],
+      materials: [{ id: 'M1', name: 'A992', type: 'steel', E: 29000 }],
     }));
     expect(ai.errors).toEqual([]);
     expect(ai.success).toBe(true);
@@ -294,5 +294,94 @@ describe('section reinforcement (issue #25)', () => {
     expect(result.success).toBe(false);
     expect(result.errors.some((e) => /barsAlongB/.test(e))).toBe(true);
     expect(validateModelShape(concreteModel).success).toBe(true);
+  });
+});
+
+describe('unit-tagged files (schema version 2, issue #8)', () => {
+  it('writes the schema version and the internal unit tag', () => {
+    const parsed = JSON.parse(modelToJson(validModel));
+    expect(parsed.schemaVersion).toBe(2);
+    expect(parsed.units).toBe('kip-in-ksi');
+    expect(parsed.nodes).toEqual(validModel.nodes);
+  });
+
+  it('reads back a tagged file as the plain model, without the tags', () => {
+    const result = validateModelJson(modelToJson(validModel));
+    expect(result.success).toBe(true);
+    expect(result.model).toEqual(validModel);
+    expect(result.model).not.toHaveProperty('units');
+    expect(result.model).not.toHaveProperty('schemaVersion');
+    expect(result.warnings).toEqual([]);
+  });
+
+  it('treats an untagged file as kip-in-ksi', () => {
+    const result = validateModelJson(JSON.stringify(validModel));
+    expect(result.success).toBe(true);
+    expect(result.model).toEqual(validModel);
+  });
+
+  it('converts a kN-m-MPa file to internal units', () => {
+    const result = validateModelJson(jsonOf({
+      units: 'kN-m-MPa',
+      nodes: [{ id: 'N1', x: 0, y: 0, z: 0 }, { id: 'N2', x: 3.048, y: 0, z: 0 }],
+      materials: [{ id: 'M1', name: 'S355', type: 'steel', E: 210000, G: 81000, density: 7850, fy: 355 }],
+      nodalLoads: [{ id: 'L1', nodeId: 'N2', fx: 0, fy: -44.482216152605, fz: 0, mx: 0, my: 0, mz: 0 }],
+    }));
+    expect(result.success).toBe(true);
+    expect(result.model?.nodes[1].x).toBeCloseTo(120, 9);
+    expect(result.model?.nodalLoads[0].fy).toBeCloseTo(-10, 9);
+    expect(result.model?.materials[0].fy).toBeCloseTo(355 / 6.894757293168361, 9);
+    expect(result.model?.materials[0].density).toBeCloseTo(0.0002836, 7);
+    expect(result.warnings).toEqual([]);
+  });
+
+  it('converts an N-mm-MPa file, including section properties and cover', () => {
+    const result = validateModelJson(JSON.stringify({
+      ...validModel,
+      units: 'N-mm-MPa',
+      schemaVersion: 2,
+      nodes: [{ id: 'N1', x: 0, y: 0, z: 0 }, { id: 'N2', x: 0, y: 3048, z: 0 }],
+      materials: [{ id: 'M1', name: "f'c 28", type: 'concrete', E: 24870, G: 10363, density: 2400, fc: 28 }],
+      sections: [{
+        id: 'S1', name: 'C400', A: 160000, Ix: 2133333333, Iy: 2133333333, J: 3609000000, b: 400, h: 400,
+        reinforcement: { cover: 40, barSize: 8, barsAlongB: 3, barsAlongH: 3, tieSize: 3, fy: 420 },
+      }],
+    }));
+    expect(result.errors).toEqual([]);
+    const s = result.model!.sections[0];
+    expect(s.b).toBeCloseTo(400 / 25.4, 9);
+    expect(s.A).toBeCloseTo(160000 / 645.16, 6);
+    expect(s.Ix).toBeCloseTo(2133333333 / 25.4 ** 4, 6);
+    expect(s.reinforcement?.cover).toBeCloseTo(40 / 25.4, 9);
+    expect(s.reinforcement?.barSize).toBe(8);
+    expect(s.reinforcement?.fy).toBeCloseTo(420 / 6.894757293168361, 9);
+  });
+
+  it('rejects an unknown units tag', () => {
+    const result = validateModelJson(jsonOf({ units: 'SI' }));
+    expect(result.success).toBe(false);
+    expect(result.errors).toEqual(['Unknown "units" "SI". Expected one of: "kip-in-ksi", "kN-m-MPa", "N-mm-MPa"']);
+  });
+
+  it('rejects a file from a newer schema version', () => {
+    const result = validateModelJson(jsonOf({ schemaVersion: 3 }));
+    expect(result.success).toBe(false);
+    expect(result.errors[0]).toMatch(/schemaVersion 3, newer than this app supports/);
+  });
+
+  it('warns when steel E looks like MPa under a kip-in-ksi tag', () => {
+    const result = validateModelJson(jsonOf({
+      materials: [{ id: 'M1', name: 'S355', type: 'steel', E: 200000, G: 77000, density: 0.000284, fy: 355 }],
+    }));
+    expect(result.success).toBe(true);
+    expect(result.warnings).toHaveLength(2);
+    expect(result.warnings?.[0]).toMatch(/Material "M1": E is 200000 ksi .*"kip-in-ksi"/);
+    expect(result.warnings?.[1]).toMatch(/Material "M1": fy is 355 ksi/);
+  });
+
+  it('warns when ksi values are tagged as MPa', () => {
+    const result = validateModelJson(jsonOf({ units: 'kN-m-MPa' }));
+    expect(result.success).toBe(true);
+    expect(result.warnings?.some((w) => /E is 4206 ksi after reading the file as "kN-m-MPa"/.test(w))).toBe(true);
   });
 });
