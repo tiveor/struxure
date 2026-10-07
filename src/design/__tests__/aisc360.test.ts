@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import type { Material, Section } from '../../core/types';
 import { checkTension } from '../aisc360/tension';
 import { checkCompression } from '../aisc360/compression';
-import { checkFlexure } from '../aisc360/flexure';
+import { checkFlexure, iShapeSlenderness, NONCOMPACT_WEB_REASON } from '../aisc360/flexure';
+import { EURO_SECTIONS, euroToSection } from '../../data/euro-sections';
 import { checkCombined } from '../aisc360/combined';
 import { designSteelElement } from '../aisc360';
 
@@ -17,6 +18,9 @@ import { designSteelElement } from '../aisc360';
  *
  * Section properties are from AISC Manual Table 1-1 (W-shapes).
  */
+
+const KSI_TO_MPA = 6.894757293168361;
+const KIPIN_TO_KNM = 4.4482216152605 * 0.0254;
 
 const A992: Material = {
   id: 'steel-A992', name: 'A992 Steel', type: 'steel',
@@ -181,6 +185,118 @@ describe('AISC 360 Chapter F — flexure', () => {
   });
 });
 
+describe('AISC 360-16 F3 — I-shapes with noncompact or slender flanges', () => {
+  // W14x90, AISC Manual Table 1-1. bf/2tf = 10.2 exceeds lambda_pf = 9.15 at
+  // Fy = 50 ksi, so Table 3-2 marks it noncompact (note f) and tabulates
+  // phi_b*Mpx = 574 kip-ft, below phi*Fy*Zx = 589 kip-ft.
+  const W14x90: Section = {
+    id: 'W14x90', name: 'W14x90', shape: 'I',
+    A: 26.5, Ix: 999, Iy: 362, J: 4.06,
+    Sx: 143, Sy: 49.9, Zx: 157, Zy: 75.6,
+    rx: 6.14, ry: 3.70, d: 14.0, bf: 14.5, tf: 0.710, tw: 0.440,
+  };
+
+  it('classifies the W14x90 flange as noncompact per Table B4.1b', () => {
+    const s = iShapeSlenderness(W14x90, 29000, 50)!;
+    expect(s.lambdaF).toBeCloseTo(10.21, 2);
+    expect(s.lambdaPf).toBeCloseTo(9.15, 2);  // 0.38 sqrt(E/Fy)
+    expect(s.lambdaRf).toBeCloseTo(24.08, 2); // 1.0 sqrt(E/Fy)
+    expect(s.flange).toBe('noncompact');
+    expect(s.web).toBe('compact');
+  });
+
+  it('matches the tabulated W14x90 capacity with Eq. F3-1', () => {
+    // Hand calc, Lb <= Lp so LTB does not govern:
+    //   Mp = 50 * 157 = 7850 kip-in, 0.7 Fy Sx = 35 * 143 = 5005 kip-in
+    //   Mn = 7850 - (7850 - 5005)(10.211 - 9.152)/(24.083 - 9.152) = 7648 kip-in
+    //   phi Mn = 0.9 * 7648 = 6883 kip-in = 573.6 kip-ft (Manual: 574)
+    const { phiMn } = checkFlexure(0, A992, W14x90, 12);
+    expect(phiMn).toBeCloseTo(6883.3, 0);
+    expect(phiMn / 12).toBeCloseTo(574, 0);
+    expect(phiMn).toBeLessThan(0.9 * 50 * 157);
+  });
+
+  it('applies Eq. F3-1 to a noncompact HEA 300 in SI units', () => {
+    // HEA 300, S355-class steel taken as Fy = 345 MPa, E = 200000 MPa.
+    // Wpl,y = 1383 cm3, Wel,y = 1260 cm3, b/2tf = 300/28 = 10.714.
+    //   lambda_pf = 0.38 sqrt(200000/345) = 9.149, lambda_rf = 24.077
+    //   Mp = 345 * 1383e3 = 477.1 kN-m, 0.7 Fy Sx = 0.7 * 345 * 1260e3 = 304.3 kN-m
+    //   Mn = 477.1 - (477.1 - 304.3)(10.714 - 9.149)/(24.077 - 9.149) = 459.0 kN-m
+    //   phi Mn = 413.1 kN-m
+    const hea300 = euroToSection(EURO_SECTIONS.find((s) => s.name === 'HEA300')!);
+    const steel345: Material = {
+      ...A992,
+      E: 200000 / KSI_TO_MPA,
+      fy: 345 / KSI_TO_MPA,
+    };
+    const { phiMn } = checkFlexure(0, steel345, hea300, 12);
+    expect(phiMn * KIPIN_TO_KNM).toBeCloseTo(0.9 * 459.0, 0);
+    // Without F3 the capacity would be phi Mp = 429.4 kN-m.
+    expect(phiMn * KIPIN_TO_KNM).toBeLessThan(0.9 * 477.1);
+  });
+
+  it('leaves a compact IPE 300 at phi Mp', () => {
+    const ipe300 = euroToSection(EURO_SECTIONS.find((s) => s.name === 'IPE300')!);
+    expect(checkFlexure(0, A992, ipe300, 12).phiMn).toBeCloseTo(0.9 * 50 * (ipe300.Zx ?? 0), 6);
+  });
+
+  it('lets lateral-torsional buckling govern when it is lower', () => {
+    const short = checkFlexure(0, A992, W14x90, 12).phiMn;
+    const long = checkFlexure(0, A992, W14x90, 40 * 12).phiMn;
+    expect(long).toBeLessThan(short);
+  });
+
+  it('uses Eq. F3-2 for a slender flange', () => {
+    // Built-up style flange, bf/2tf = 30 > lambda_rf = 24.08; h/tw = (24 - 2 * 0.5)/0.5 = 46
+    //   kc = 4 / sqrt(46) = 0.590, Mn = 0.9 * 29000 * 0.583 * Sx / 30^2
+    const plate: Section = {
+      id: 'P', name: 'Custom', shape: 'I',
+      A: 30, Ix: 2000, Iy: 300, J: 1,
+      Sx: 160, Zx: 175, ry: 3.2, d: 24, bf: 30, tf: 0.5, tw: 0.5,
+    };
+    const kc = 4 / Math.sqrt(46);
+    const expected = 0.9 * (0.9 * 29000 * kc * 160) / 30 ** 2;
+    expect(checkFlexure(0, A992, plate, 12).phiMn).toBeCloseTo(expected, 6);
+  });
+
+  it('does not apply flange local buckling to HSS', () => {
+    const hss: Section = {
+      id: 'H', name: 'HSS6x4x3/8', shape: 'HSS',
+      A: 6.18, Ix: 26.3, Iy: 13.7, J: 30.2,
+      Sx: 8.76, Zx: 10.9, ry: 1.49, d: 6, bf: 4, tf: 0.1, tw: 0.1,
+    };
+    expect(checkFlexure(0, A992, hss, 12).phiMn).toBeCloseTo(0.9 * 50 * 10.9, 6);
+  });
+
+  it('flags a noncompact web as indicative', () => {
+    const deepWeb: Section = {
+      id: 'D', name: 'Girder', shape: 'I',
+      A: 40, Ix: 20000, Iy: 500, J: 5,
+      Sx: 800, Zx: 900, ry: 3.5, d: 50, bf: 14, tf: 1, tw: 0.4,
+    };
+    const result = checkFlexure(100, A992, deepWeb, 12);
+    expect(result.indicative?.reason).toBe(NONCOMPACT_WEB_REASON);
+    expect(designSteelElement('G', 0, 0, 100, A992, deepWeb, 12).indicative?.reason).toBe(NONCOMPACT_WEB_REASON);
+    expect(checkFlexure(100, A992, W14x90, 12).indicative).toBeUndefined();
+  });
+
+  it('finds which EN sections have noncompact flanges', () => {
+    const noncompactAt = (E: number, Fy: number) =>
+      EURO_SECTIONS
+        .filter((s) => iShapeSlenderness(euroToSection(s), E, Fy)?.flange !== 'compact')
+        .map((s) => s.name);
+    const expected = ['HEA180', 'HEA200', 'HEA220', 'HEA240', 'HEA260', 'HEA280', 'HEA300', 'HEA320'];
+    expect(noncompactAt(29000, 50)).toEqual(expected);
+    expect(noncompactAt(200000, 345)).toEqual(expected);
+    // No EN section has a slender flange or a noncompact web at these grades.
+    for (const s of EURO_SECTIONS) {
+      const sl = iShapeSlenderness(euroToSection(s), 29000, 50)!;
+      expect(sl.flange).not.toBe('slender');
+      expect(sl.web).toBe('compact');
+    }
+  });
+});
+
 describe('AISC 360 Chapter H — combined forces', () => {
   it('uses Eq. H1-1a when Pr/Pc >= 0.2', () => {
     // 0.5 + (8/9)(0.3 + 0.0) = 0.7667
@@ -207,8 +323,8 @@ describe('AISC 360 Chapter H — combined forces', () => {
 });
 
 describe('AISC 360 — element result', () => {
-  it('is a code check, never flagged as indicative', () => {
-    // Only the ACI 318 column screening check carries the indicative flag.
+  it('is a code check, not indicative, for a compact rolled shape', () => {
+    // Only a noncompact or slender web (F4/F5, not implemented) flags it.
     expect(designSteelElement('S1', 50, 0, 1200, A992, W12x26, 144).indicative).toBeUndefined();
     expect(designSteelElement('S2', 0, 50, 1200, A992, W12x26, 144).indicative).toBeUndefined();
   });
