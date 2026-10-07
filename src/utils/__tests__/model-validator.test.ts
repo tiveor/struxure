@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { validateModelJson, validateModelShape } from '../model-validator';
 import { extractAndValidateModel } from '../ai-model-validator';
+import { modelToJson } from '../export';
 import type { StructuralModel } from '../../core/types';
 
 const validModel: StructuralModel = {
@@ -235,5 +236,63 @@ describe('extractAndValidateModel (AI path)', () => {
     const result = extractAndValidateModel(JSON.stringify(validModel));
     expect(result.model?.materials[0].G).toBe(11200);
     expect(result.model?.materials[0].density).toBeCloseTo(0.000284, 9);
+  });
+});
+
+describe('section reinforcement (issue #25)', () => {
+  const concreteModel: StructuralModel = {
+    ...validModel,
+    materials: [
+      { id: 'M1', name: 'C4000', type: 'concrete', E: 3605, G: 1502, density: 0.0000868, fc: 4 },
+    ],
+    sections: [
+      {
+        id: 'S1', name: '16x16 8#8', A: 256, Ix: 5461.33, Iy: 5461.33, J: 9000, b: 16, h: 16,
+        reinforcement: { cover: 1.5, barSize: 8, barsAlongB: 3, barsAlongH: 3, tieSize: 3, fy: 60 },
+      },
+    ],
+  };
+
+  it('round-trips through the saved JSON unchanged', () => {
+    const result = validateModelJson(modelToJson(concreteModel));
+    expect(result.success).toBe(true);
+    expect(result.model).toEqual(concreteModel);
+    expect(result.model?.sections[0].reinforcement).toEqual(concreteModel.sections[0].reinforcement);
+  });
+
+  it('loads a section without reinforcement exactly as before', () => {
+    const result = validateModelJson(modelToJson(validModel));
+    expect(result.success).toBe(true);
+    expect(result.model?.sections[0]).not.toHaveProperty('reinforcement');
+    expect(result.model).toEqual(validModel);
+  });
+
+  it('rejects invalid reinforcement on the file path', () => {
+    const bad = {
+      ...concreteModel,
+      sections: [{ ...concreteModel.sections[0], reinforcement: { cover: 1.5, barSize: 14, barsAlongB: 3, barsAlongH: 3, tieSize: 3 } }],
+    };
+    const result = validateModelJson(JSON.stringify(bad));
+    expect(result.success).toBe(false);
+    expect(result.errors).toEqual(['Section "S1": reinforcement "barSize" must be a bar designation from 3 to 11']);
+  });
+
+  it('rejects reinforcement on a section without b and h', () => {
+    const { b: _b, h: _h, ...noDims } = concreteModel.sections[0];
+    void _b; void _h;
+    const result = validateModelJson(JSON.stringify({ ...concreteModel, sections: [noDims] }));
+    expect(result.success).toBe(false);
+    expect(result.errors[0]).toMatch(/Section "S1": reinforcement needs positive "b" and "h"/);
+  });
+
+  it('rejects invalid reinforcement on the AI path too', () => {
+    const bad = {
+      ...concreteModel,
+      sections: [{ ...concreteModel.sections[0], reinforcement: { cover: 1.5, barSize: 8, barsAlongB: 1, barsAlongH: 3, tieSize: 3 } }],
+    };
+    const result = extractAndValidateModel('```json\n' + JSON.stringify(bad) + '\n```');
+    expect(result.success).toBe(false);
+    expect(result.errors.some((e) => /barsAlongB/.test(e))).toBe(true);
+    expect(validateModelShape(concreteModel).success).toBe(true);
   });
 });

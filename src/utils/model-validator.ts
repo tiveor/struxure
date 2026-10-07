@@ -1,4 +1,5 @@
 import type { StructuralModel } from '../core/types';
+import { reinforcementErrors } from '../design/aci318/rebar';
 
 export interface ValidationResult {
   success: boolean;
@@ -164,6 +165,24 @@ function checkItemsAreObjects(parsed: Record<string, unknown>): string[] {
   return errors;
 }
 
+/**
+ * Check the optional `reinforcement` of each section. Absent is valid (older
+ * files and steel sections have none); present must be complete and fit.
+ * Runs on both the strict file path and the lenient AI path, so a model the
+ * AI path accepts still reopens from a saved file.
+ */
+function checkSectionReinforcement(parsed: Record<string, unknown>): string[] {
+  const errors: string[] = [];
+  const sections = parsed.sections;
+  if (!Array.isArray(sections)) return errors;
+  sections.forEach((s, i) => {
+    if (!isRecord(s)) return;
+    const tag = isNonEmptyString(s.id) ? `"${s.id}"` : `#${i + 1}`;
+    for (const msg of reinforcementErrors(s)) errors.push(`Section ${tag}: ${msg}`);
+  });
+  return errors;
+}
+
 /** Check that every referenced node/material/section/element ID exists. */
 function checkReferences(model: StructuralModel): string[] {
   const errors: string[] = [];
@@ -219,7 +238,7 @@ export function validateModelShape(parsed: unknown): ValidationResult {
   }
 
   const model = parsed as unknown as StructuralModel;
-  errors.push(...checkReferences(model), ...checkSanity(model));
+  errors.push(...checkSectionReinforcement(parsed), ...checkReferences(model), ...checkSanity(model));
 
   if (errors.length > 0) {
     return { success: false, errors };
@@ -246,7 +265,11 @@ export function validateModelJson(text: string): ValidationResult {
     return { success: false, errors: ['File does not contain a model object'] };
   }
 
-  const errors = [...checkRequiredArrays(parsed), ...checkFieldTypes(parsed)];
+  const errors = [
+    ...checkRequiredArrays(parsed),
+    ...checkFieldTypes(parsed),
+    ...checkSectionReinforcement(parsed),
+  ];
   if (errors.length > 0) {
     return { success: false, errors };
   }
