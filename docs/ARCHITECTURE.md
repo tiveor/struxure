@@ -119,11 +119,14 @@ dispatches by `material.type`:
 - `'concrete'` → `designConcreteElement` from `src/design/aci318/index.ts`,
   which treats the element as a column (`columns.ts`) if the axial load
   exceeds `0.1·f'c·Ag`, otherwise as a beam using `flexure.ts` and
-  `shear.ts`.
+  `shear.ts`. A column whose section defines `reinforcement` is checked
+  against its strain-compatibility P-M diagram (`interaction.ts`, bar layout
+  in `rebar.ts`); one without falls back to the 1% screening estimate.
 
 Both paths return a `DesignCheckResult` (`src/design/types.ts`) carrying a
 governing demand/capacity (`ratio`) and a `pass`/`fail` `status`. A result
-whose ratio is a screening estimate (today only the ACI 318 column branch)
+whose ratio is a screening estimate (today only the ACI 318 column branch
+without reinforcement)
 also carries `indicative: { reason }`, which the results panel, heatmap legend
 and PDF report mark with a † (`src/design/indicative.ts`). These results feed `src/store/results-store.ts` as `designResults`, which the
 viewport heatmap and the PDF report both consume.

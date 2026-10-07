@@ -35,27 +35,57 @@ inferred by feeding in a demand and reading the ratio back.
 | AISC 360 Ch. H — P-M interaction | Eq. H1-1a / H1-1b, including the Pr/Pc = 0.2 switch | Validated |
 | ACI 318 — beam flexure | ACI 318-19 §22.2 Whitney block and §9.6.1.2 minimum steel, worked by hand for a 12x24 with f'c = 4 ksi | Validated |
 | ACI 318 — beam shear | ACI 318-19 Eq. 22.5.5.1 (Vc) and §22.5.1.2 (Vs limit) | Validated |
-| ACI 318 — columns, pure axial φPn,max | ACI 318-19 22.4.2.2 (Po) with the 0.80 tied cap of 22.4.2.1, worked by hand for a 16x16 at 1% steel → 528 kips | Validated |
-| ACI 318 — columns, P-M interaction | — | Self-consistent only — see the caveat below |
+| ACI 318 — columns with reinforcement, P-M interaction | Strain compatibility per ACI 318-19 22.2 (Whitney block, β1 per Table 22.2.2.4.3, εcu = 0.003, Es = 29000 ksi), φ per Table 21.2.2, Pn,max = 0.80 Po (22.4.2.1). Two hand calculations reproduced in full in the test: 16x16 with 8 #8, f'c = 4 ksi (Po = 1228.1 kips, φPn,max = 638.6 kips, balanced φPn = 237.8 kips / φMn = 2118.7 kip-in, pure bending φMn = 2043.2 kip-in, φPnt = 341.3 kips) and 12x20 with 6 #9, f'c = 5 ksi (β1 = 0.80; Po = 1354.5 kips, balanced Pn = 411.3 kips / Mn = 5103.1 kip-in, pure bending φMn = 2585.9 kip-in, φPnt = 324 kips) | Validated |
+| ACI 318 — columns with reinforcement, φ transition | Table 21.2.2 at εt = εty, εty + 0.003 and in between (e.g. εt = 0.005 → φ = 0.894) | Validated |
+| ACI 318 — columns with reinforcement, D/C ratio | Radial ratio to the φ curve; checked at points on the curve (D/C = 1), along a ray (0.5, 2) and at the pure axial and pure bending ends | Validated against the diagram above |
+| ACI 318 — columns with reinforcement, biaxial | Linear load contour (Bresler, α = 1) | Self-consistent (conservative by construction) |
+| ACI 318 — columns without reinforcement, pure axial φPn,max | ACI 318-19 22.4.2.2 (Po) with the 0.80 tied cap of 22.4.2.1, worked by hand for a 16x16 at 1% steel → 528 kips | Validated |
+| ACI 318 — columns without reinforcement, P-M interaction | — | Self-consistent only, indicative (see the caveat below) |
 
-### Caveat on ACI 318 columns
+### ACI 318 columns
 
-`checkColumn` is a simplified linear P-M interaction that **assumes a 1%
-reinforcement ratio** rather than analysing the section's actual bars, and
-approximates the balanced point. It is a screening tool, not a column design.
-Treat its ratio as indicative and verify any column that matters by other means.
+A concrete element is checked as a column when its axial load exceeds
+0.1 f'c Ag. What the check does depends on whether its section defines
+reinforcement.
 
-The app says so too. A concrete element checked as a column carries an
-`indicative` flag on its design result, and its D/C ratio is marked with a †
-in the results panel, on the D/C heatmap legend and in the PDF report's design
-checks table, each with a note giving the reason. The assumed steel is reported
-as `rhoAssumed`, not as `AsRequired`, since it is an input to the check rather
-than a computed requirement.
+**With reinforcement** (a rectangular b x h section with bars, entered in the
+Sections tab or as `reinforcement` in the JSON file), `checkReinforcedColumn`
+builds the section's P-M interaction diagram by strain compatibility
+([`src/design/aci318/interaction.ts`](../src/design/aci318/interaction.ts)):
+the neutral axis is stepped across the section, bars inside the stress block
+displace concrete, φ varies between 0.65 (tied) and 0.90 with the net tensile
+strain, the curve is capped at 0.80 φ Po and includes pure tension. The D/C
+ratio is radial: the demand (Pu, Mu) is scaled along the ray from the origin
+until it meets the φ curve, and D/C is the demand's distance over the
+curve's. The result is not marked indicative and reports `AsProvided` and
+`rhoProvided`.
 
-The pure axial anchor it reports, `phiPn0`, is a plain ACI equation and is
-pinned against a hand calculation. The balanced point and the pure moment
-anchor `phiMn0` are approximations, and nothing between the anchors is
-validated.
+Caveats for the reinforced check:
+
+- Ties only. Spiral columns (φ = 0.75, 0.85 Po cap) are not modelled.
+- Bars are one size, in a perimeter layout symmetric about both axes
+  (`barsAlongB` per b face, `barsAlongH` per h face, corners included).
+- The strong-axis moment (local z, depth h) is checked as today. When the
+  analysis also reports a weak-axis moment, biaxial bending uses the linear
+  load contour Mux/φMnx + Muy/φMny ≤ 1 at the scaled axial load, which is
+  conservative compared with the curved contours of real sections.
+- Each element end is checked with its own (P, M) pair, and the larger ratio
+  governs. Slenderness (moment magnification, ACI 318-19 6.6.4) is not
+  applied, so the check is for short columns or for moments that already
+  include second-order effects.
+- Shear and detailing (tie spacing, minimum and maximum ρ of 10.6.1.1) are
+  not checked.
+
+**Without reinforcement** the old screening check runs: `checkColumn` is a
+simplified linear P-M interaction that **assumes a 1% reinforcement ratio**
+and approximates the balanced point. It is a screening tool, not a column
+design. The result carries an `indicative` flag and its D/C ratio is marked
+with a † in the results panel, on the D/C heatmap legend and in the PDF
+report's design checks table, with a note asking the user to define the
+section's reinforcement. The assumed steel is reported as `rhoAssumed`, not
+as `AsRequired`. Its pure axial anchor `phiPn0` is pinned against a hand
+calculation; the balanced point and `phiMn0` are approximations, and nothing
+between the anchors is validated.
 
 ## Analysis engine
 
