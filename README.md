@@ -35,7 +35,7 @@ verified against published tables and which are not.
 ### Modeling
 - **Interactive 3D modeling** — Create and edit nodes, elements, supports, and loads with real-time visualization via Three.js
 - **Multi-material support** — Steel (A992) and concrete with full property definitions
-- **AISC section library** — Searchable database of W and rectangular HSS sections with auto-populated properties
+- **Section library** — Searchable AISC W and rectangular HSS shapes, plus European IPE, HEA and HEB sections (EN 10365), with auto-populated properties shown in imperial or metric units
 - **8 built-in templates** — Simple beam, cantilever, portal frame, Warren truss, parabolic arch, 3D building, and Eiffel Tower (88-element 3D lattice)
 - **DXF import** — Drag-and-drop AutoCAD `.dxf` files to import geometry
 - **IFC (BIM) import** — Drag-and-drop `.ifc` files with dual strategy: analytical model preferred, physical elements fallback
@@ -58,7 +58,7 @@ verified against published tables and which are not.
 | Moment diagrams with values, at adjustable scale | Extruded 3D section rendering |
 
 ### Design Checks
-- **AISC 360 (Steel)** — Tension (Ch. D), Compression (Ch. E), Flexure (Ch. F), Combined P-M interaction (Ch. H)
+- **AISC 360 (Steel)** — Tension (Ch. D), Compression (Ch. E), Flexure (Ch. F, including flange local buckling of noncompact I-shapes), Combined P-M interaction (Ch. H)
 - **ACI 318 (Concrete)** — Beam flexure (Whitney block), Shear (Vc + Vs), Columns (strain-compatibility P-M interaction from the section's bars, or an indicative 1% screening estimate when no bars are defined)
 - **D/C ratio visualization** — Elements color-coded by demand/capacity ratio
 
@@ -135,7 +135,7 @@ src/
 │   ├── solver.worker.ts        # Web Worker for non-blocking analysis
 │   ├── solver-manager.ts       # Spawns the solver Web Worker; no fallback of its own (see docs/ARCHITECTURE.md)
 │   └── post-processor.ts       # Internal forces and reactions
-├── data/           # AISC section database
+├── data/           # AISC and EN section databases
 ├── design/         # Design verification
 │   ├── aisc360/    # Steel: tension, compression, flexure, combined
 │   └── aci318/     # Concrete: flexure, shear, columns
@@ -180,7 +180,7 @@ All events go through `track()` in `src/utils/analytics.ts`, which checks `typeo
 - Linear static analysis only
 - ~200 nodes recommended maximum
 - No dynamic, modal, or P-Delta analysis
-- Analysis runs in kips, inches and ksi. The metric switch converts inputs and outputs, saved files carry a unit tag, and EN 10025 steels and metric concrete grades are included, but the section library is AISC shapes only
+- Analysis runs in kips, inches and ksi. The metric switch converts inputs and outputs, saved files carry a unit tag, EN 10025 steels and metric concrete grades are included, and the section library has AISC and EN (IPE, HEA, HEB) shapes
 
 See [ROADMAP.md](ROADMAP.md) for planned features and how these limitations are expected to be addressed.
 

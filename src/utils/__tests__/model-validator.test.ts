@@ -447,3 +447,33 @@ describe('AI path units', () => {
     expect(result.errors[0]).toMatch(/^Unknown "units" "metric"/);
   });
 });
+
+describe('section shape', () => {
+  const withShape = (shape: unknown) => ({
+    ...validModel,
+    sections: [{ ...validModel.sections[0], shape }],
+  });
+
+  it('round-trips a known shape through the saved JSON', () => {
+    const model = withShape('I') as StructuralModel;
+    const result = validateModelJson(modelToJson(model));
+    expect(result.success).toBe(true);
+    expect(result.model?.sections[0].shape).toBe('I');
+  });
+
+  it('accepts every shape family and no shape at all', () => {
+    for (const shape of ['I', 'HSS', 'pipe', 'rect', undefined]) {
+      expect(validateModelJson(JSON.stringify(withShape(shape))).success).toBe(true);
+    }
+  });
+
+  it('rejects an unknown shape on the file path', () => {
+    const result = validateModelJson(JSON.stringify(withShape('W')));
+    expect(result.success).toBe(false);
+    expect(result.errors).toEqual(['Section "S1": "shape" must be one of "I", "HSS", "pipe", "rect"']);
+  });
+
+  it('rejects an unknown shape on the AI path too', () => {
+    expect(validateModelShape(withShape(3)).success).toBe(false);
+  });
+});

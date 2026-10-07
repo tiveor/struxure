@@ -144,5 +144,16 @@ describe('aiscToSection', () => {
     expect(section.bf).toBe(aisc.bf);
     expect(section.tf).toBe(aisc.tf);
     expect(section.tw).toBe(aisc.tw);
+    expect(section.shape).toBe('I');
+    expect(section).not.toHaveProperty('b');
+  });
+
+  it('marks HSS as HSS and gives them b and h', () => {
+    const aisc = AISC_SECTIONS.find((s) => s.name === 'HSS6x4x3/8')!;
+    const section = aiscToSection(aisc);
+    expect(section.shape).toBe('HSS');
+    expect(section.b).toBe(4);
+    expect(section.h).toBe(6);
+    expect(section.tw).toBe(0.349);
   });
 });

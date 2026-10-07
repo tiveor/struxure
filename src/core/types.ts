@@ -22,10 +22,23 @@ export interface Material {
   fc?: number;     // Compressive strength (concrete)
 }
 
+/**
+ * Cross-section family. Drives the 3D extrusion and which design rules apply
+ * (the AISC flange local buckling check only runs on 'I').
+ */
+export type SectionShape = 'I' | 'HSS' | 'pipe' | 'rect';
+
+export const SECTION_SHAPES: readonly SectionShape[] = ['I', 'HSS', 'pipe', 'rect'];
+
 /** Cross-section properties */
 export interface Section {
   id: string;
   name: string;
+  /**
+   * Optional shape family. Older files have none; consumers then fall back
+   * to the name prefix (W..., HSS...) and the material.
+   */
+  shape?: SectionShape;
   A: number;       // Cross-sectional area
   Ix: number;      // Moment of inertia about strong axis
   Iy: number;      // Moment of inertia about weak axis
@@ -40,8 +53,8 @@ export interface Section {
   bf?: number;     // Flange width
   tf?: number;     // Flange thickness
   tw?: number;     // Web thickness
-  b?: number;      // Width (concrete)
-  h?: number;      // Height (concrete)
+  b?: number;      // Overall width (concrete rectangle, HSS)
+  h?: number;      // Overall depth (concrete rectangle, HSS)
   /**
    * Longitudinal reinforcement of a rectangular concrete section (b x h).
    * Optional: without it the ACI column check falls back to an indicative

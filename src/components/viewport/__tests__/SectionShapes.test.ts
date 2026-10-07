@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { createWShape, createHSSRect, createPipeShape, createRectShape, createCircleShape } from '../SectionShapes';
 import { sectionToShape } from '../section-to-shape';
+import { EURO_SECTIONS, euroToSection } from '../../../data/euro-sections';
+import { AISC_SECTIONS, aiscToSection } from '../../../data/aisc-sections';
 
 describe('createWShape', () => {
   it('should create a closed shape with correct bounding box', () => {
@@ -129,6 +131,38 @@ describe('sectionToShape', () => {
     const result = sectionToShape({
       id: '1', name: 'Unknown', A: 10, Ix: 100, Iy: 50, J: 5,
     });
+    expect(result.type).toBe('circle');
+  });
+
+  it('draws an IPE as an I-shape from its shape field, not its name', () => {
+    const ipe300 = euroToSection(EURO_SECTIONS.find((s) => s.name === 'IPE300')!);
+    expect(sectionToShape(ipe300).type).toBe('w-shape');
+    // Without the field the name prefix would not match and it fell back to a circle.
+    expect(sectionToShape({ ...ipe300, shape: undefined }).type).toBe('circle');
+  });
+
+  it('draws a library HSS as a tube', () => {
+    const hss = aiscToSection(AISC_SECTIONS.find((s) => s.name === 'HSS6x4x3/8')!);
+    const result = sectionToShape(hss);
+    expect(result.type).toBe('hss-rect');
+    const xs = result.shape.getPoints().map((p) => p.x);
+    expect(Math.max(...xs) - Math.min(...xs)).toBeCloseTo(4, 6); // b
+    expect(result.shape.holes).toHaveLength(1);
+  });
+
+  it('draws a rect section as a rectangle whatever its material', () => {
+    const result = sectionToShape({ id: '1', name: 'R', shape: 'rect', A: 96, Ix: 1, Iy: 1, J: 1, b: 8, h: 12 });
+    expect(result.type).toBe('rectangle');
+  });
+
+  it('draws a pipe as a ring when the wall thickness is known', () => {
+    const result = sectionToShape({ id: '1', name: 'P', shape: 'pipe', A: 5, Ix: 1, Iy: 1, J: 1, d: 6, tw: 0.5 });
+    expect(result.type).toBe('pipe');
+    expect(result.shape.holes).toHaveLength(1);
+  });
+
+  it('falls back to the name prefix when a shape lacks its dimensions', () => {
+    const result = sectionToShape({ id: '1', name: 'X', shape: 'I', A: 10, Ix: 1, Iy: 1, J: 1 });
     expect(result.type).toBe('circle');
   });
 

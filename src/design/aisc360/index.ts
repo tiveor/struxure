@@ -32,7 +32,8 @@ export function designSteelElement(
   const { ratio: compressionRatio } = checkCompression(compressionForce, material, section, L, L);
 
   // Flexure check
-  const { ratio: flexureRatio } = checkFlexure(momentZ, material, section, L);
+  const flexure = checkFlexure(momentZ, material, section, L);
+  const flexureRatio = flexure.ratio;
 
   // Axial ratio for the combined check: the governing one of tension and
   // compression, each taken against its own capacity.
@@ -55,5 +56,8 @@ export function designSteelElement(
       combinedRatio,
       governingCheck: governingRatio,
     },
+    // Only a noncompact or slender web makes the flexure capacity, and so
+    // the result, indicative.
+    ...(flexure.indicative ? { indicative: flexure.indicative } : {}),
   };
 }

@@ -50,10 +50,30 @@ export function SectionEditor() {
   const [barsAlongH, setBarsAlongH] = useState(3);
   const [rebarFy, setRebarFy] = useState(DEFAULT_REBAR_FY);
 
+  // Optional steel I-section geometry, so the AISC flexure check uses the
+  // real depth and moduli instead of its fallbacks. Defaults are W12x26.
+  const [isI, setIsI] = useState(false);
+  const [d, setD] = useState(12.2);
+  const [bf, setBf] = useState(6.49);
+  const [tf, setTf] = useState(0.38);
+  const [tw, setTw] = useState(0.23);
+  // 0 means not given: the check then derives the modulus from Ix and d.
+  const [Sx, setSx] = useState(0);
+  const [Zx, setZx] = useState(0);
+
   const reinforcement: ColumnReinforcement = { cover, barSize, tieSize, barsAlongB, barsAlongH, fy: rebarFy };
   const reinfErrors = isRect && hasReinf ? reinforcementErrors({ b, h, reinforcement }) : [];
   const rectErrors = isRect && !(b > 0 && h > 0) ? ['b and h must be positive'] : [];
-  const formErrors = rectErrors.length > 0 ? rectErrors : reinfErrors;
+  const iErrors: string[] = [];
+  if (!isRect && isI) {
+    if (!(d > 0 && bf > 0 && tf > 0 && tw > 0)) iErrors.push('d, bf, tf and tw must be positive');
+    else {
+      if (2 * tf >= d) iErrors.push('Two flanges must be thinner than d');
+      if (tw >= bf) iErrors.push('tw must be less than bf');
+    }
+    if (Sx < 0 || Zx < 0) iErrors.push('Sx and Zx cannot be negative');
+  }
+  const formErrors = rectErrors.length > 0 ? rectErrors : iErrors.length > 0 ? iErrors : reinfErrors;
 
   const handleAdd = () => {
     const trimmed = name.trim();
@@ -68,8 +88,12 @@ export function SectionEditor() {
     const id = newId('sec');
     let section: Section = { id, name: trimmed, A, Ix, Iy, J };
     if (isRect) {
-      section = { id, name: trimmed, ...rectangleProperties(b, h), b, h };
+      section = { id, name: trimmed, shape: 'rect', ...rectangleProperties(b, h), b, h };
       if (hasReinf) section.reinforcement = reinforcement;
+    } else if (isI) {
+      section = { id, name: trimmed, shape: 'I', A, Ix, Iy, J, d, bf, tf, tw };
+      if (Sx > 0) section.Sx = Sx;
+      if (Zx > 0) section.Zx = Zx;
     }
     addSection(section);
     setName('');
@@ -81,14 +105,14 @@ export function SectionEditor() {
 
   return (
     <div className="flex flex-col h-full">
-      {/* AISC Library button */}
+      {/* Section library button (AISC and EN) */}
       <div className="px-4 pt-4 pb-2">
         <button
           className="w-full py-2 bg-accent text-white text-sm font-bold rounded hover:bg-accent/80 transition-opacity cursor-pointer flex items-center justify-center gap-2"
           onClick={() => setShowPicker(true)}
         >
           <span className="material-icons-round" style={{ fontSize: '16px' }}>menu_book</span>
-          AISC LIBRARY
+          SECTION LIBRARY
         </button>
       </div>
 
@@ -137,6 +161,46 @@ export function SectionEditor() {
                 <QuantityInput id="sec-J" className={numCls} qty="momentOfInertia" unitSystem={unitSystem} value={J} onChange={setJ} />
               </div>
             </div>
+          )}
+          {!isRect && (
+            <label htmlFor="sec-ishape" className={checkLabelCls}>
+              <input id="sec-ishape" type="checkbox" checked={isI} onChange={(e) => setIsI(e.target.checked)} />
+              Steel I-section dimensions (AISC flexure)
+            </label>
+          )}
+          {!isRect && isI && (
+            <fieldset className="space-y-2">
+              <legend className="sr-only">Steel I-section dimensions</legend>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label htmlFor="sec-d" className={labelCls}>d ({unitLabel('sectionDimension', unitSystem)})</label>
+                  <QuantityInput id="sec-d" min={0} className={numCls} qty="sectionDimension" unitSystem={unitSystem} value={d} onChange={setD} />
+                </div>
+                <div>
+                  <label htmlFor="sec-bf" className={labelCls}>bf ({unitLabel('sectionDimension', unitSystem)})</label>
+                  <QuantityInput id="sec-bf" min={0} className={numCls} qty="sectionDimension" unitSystem={unitSystem} value={bf} onChange={setBf} />
+                </div>
+                <div>
+                  <label htmlFor="sec-tf" className={labelCls}>tf ({unitLabel('sectionDimension', unitSystem)})</label>
+                  <QuantityInput id="sec-tf" min={0} className={numCls} qty="sectionDimension" unitSystem={unitSystem} value={tf} onChange={setTf} />
+                </div>
+                <div>
+                  <label htmlFor="sec-tw" className={labelCls}>tw ({unitLabel('sectionDimension', unitSystem)})</label>
+                  <QuantityInput id="sec-tw" min={0} className={numCls} qty="sectionDimension" unitSystem={unitSystem} value={tw} onChange={setTw} />
+                </div>
+                <div>
+                  <label htmlFor="sec-Sx" className={labelCls}>Sx ({unitLabel('sectionModulus', unitSystem)})</label>
+                  <QuantityInput id="sec-Sx" min={0} className={numCls} qty="sectionModulus" unitSystem={unitSystem} value={Sx} onChange={setSx} />
+                </div>
+                <div>
+                  <label htmlFor="sec-Zx" className={labelCls}>Zx ({unitLabel('sectionModulus', unitSystem)})</label>
+                  <QuantityInput id="sec-Zx" min={0} className={numCls} qty="sectionModulus" unitSystem={unitSystem} value={Zx} onChange={setZx} />
+                </div>
+              </div>
+              <p className="text-[10px] leading-snug text-slate-500">
+                Strong-axis depth d along Ix. Leave Sx or Zx at 0 to derive it from Ix and d.
+              </p>
+            </fieldset>
           )}
           {isRect && (
             <label htmlFor="sec-reinf" className={checkLabelCls}>

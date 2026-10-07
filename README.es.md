@@ -35,7 +35,7 @@ verificaciones estan contrastadas contra tablas publicadas y cuales no.
 ### Modelado
 - **Modelado 3D interactivo** — Crea y edita nodos, elementos, apoyos y cargas con visualizacion en tiempo real via Three.js
 - **Soporte multi-material** — Acero (A992) y concreto con propiedades completas
-- **Biblioteca de secciones AISC** — Base de datos de secciones W y HSS rectangulares con propiedades auto-completadas
+- **Biblioteca de secciones** — Perfiles AISC W y HSS rectangulares, mas secciones europeas IPE, HEA y HEB (EN 10365), con propiedades auto-completadas en unidades imperiales o metricas
 - **8 plantillas integradas** — Viga simple, voladizo, portico, cercha Warren, arco parabolico, edificio 3D, Torre Eiffel (lattice 3D de 88 elementos) y Cristo de la Concordia (marco de estatua de 35 nodos con brazos)
 - **Importacion DXF** — Arrastra archivos `.dxf` de AutoCAD para importar geometria
 - **Importacion IFC (BIM)** — Arrastra archivos `.ifc` con estrategia dual: modelo analitico preferido, elementos fisicos como respaldo
@@ -135,7 +135,7 @@ src/
 │   ├── solver.worker.ts        # Web Worker para analisis no-bloqueante
 │   ├── solver-manager.ts       # Inicia el Web Worker del solver; sin fallback propio (ver docs/ARCHITECTURE.md)
 │   └── post-processor.ts       # Fuerzas internas y reacciones
-├── data/           # Base de datos de secciones AISC
+├── data/           # Bases de datos de secciones AISC y EN
 ├── design/         # Verificacion de diseno
 │   ├── aisc360/    # Acero: tension, compresion, flexion, combinada
 │   └── aci318/     # Concreto: flexion, cortante, columnas
@@ -180,7 +180,7 @@ Todos los eventos pasan por `track()` en `src/utils/analytics.ts`, que comprueba
 - Analisis estatico lineal unicamente
 - ~200 nodos maximo recomendado
 - Sin analisis dinamico, modal ni P-Delta
-- El analisis se hace en kips, pulgadas y ksi. El selector metrico convierte entradas y salidas, los archivos guardados llevan una etiqueta de unidades y se incluyen aceros EN 10025 y hormigones metricos, pero la biblioteca de secciones solo tiene perfiles AISC
+- El analisis se hace en kips, pulgadas y ksi. El selector metrico convierte entradas y salidas, los archivos guardados llevan una etiqueta de unidades, se incluyen aceros EN 10025 y hormigones metricos, y la biblioteca de secciones tiene perfiles AISC y EN (IPE, HEA, HEB)
 
 Consulta [ROADMAP.md](ROADMAP.md) (en ingles) para conocer las funcionalidades planeadas y como se espera abordar estas limitaciones.
 
