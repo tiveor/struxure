@@ -1,14 +1,11 @@
 import { create } from 'zustand';
 import type { AnalysisResults } from '../core/types';
 import type { SolverStep } from '../core/solver-manager';
+import type { DesignCheckResult } from '../design/types';
 
-export interface DesignResult {
-  elementId: string;
-  material: 'steel' | 'concrete';
-  ratio: number; // D/C ratio
-  status: 'pass' | 'fail';
-  details: Record<string, number>;
-}
+// Same shape the design runner produces, aliased so the store cannot drift
+// from it (for example by dropping the `indicative` flag).
+export type DesignResult = DesignCheckResult;
 
 interface ResultsState {
   analysisResults: AnalysisResults | null;

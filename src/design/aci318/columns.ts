@@ -1,6 +1,16 @@
 import type { Material, Section } from '../../core/types';
 
 /**
+ * Longitudinal steel ratio Ast/Ag that checkColumn assumes in place of the
+ * section's actual bars. Exported so results can state the assumption.
+ */
+export const ASSUMED_COLUMN_RHO = 0.01;
+
+/** Why a checkColumn ratio is indicative. Shown wherever the ratio is. */
+export const COLUMN_INDICATIVE_REASON =
+  'ACI 318 column check assumes 1% steel and a simplified linear P-M interaction, not the actual bars. Screening only.';
+
+/**
  * ACI 318 Column Design — Simplified P-M Interaction
  *
  * Uses a simplified linear interaction diagram for uniaxial bending.
@@ -32,7 +42,7 @@ export function checkColumn(
   const d = h - 2.5;
 
   // Assume 1% reinforcement ratio (typical)
-  const rho = 0.01;
+  const rho = ASSUMED_COLUMN_RHO;
   const Ast = rho * Ag;
 
   // Pure axial capacity (with 0.80 factor for tied columns)

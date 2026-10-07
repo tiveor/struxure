@@ -45,6 +45,13 @@ reinforcement ratio** rather than analysing the section's actual bars, and
 approximates the balanced point. It is a screening tool, not a column design.
 Treat its ratio as indicative and verify any column that matters by other means.
 
+The app says so too. A concrete element checked as a column carries an
+`indicative` flag on its design result, and its D/C ratio is marked with a †
+in the results panel, on the D/C heatmap legend and in the PDF report's design
+checks table, each with a note giving the reason. The assumed steel is reported
+as `rhoAssumed`, not as `AsRequired`, since it is an input to the check rather
+than a computed requirement.
+
 The pure axial anchor it reports, `phiPn0`, is a plain ACI equation and is
 pinned against a hand calculation. The balanced point and the pure moment
 anchor `phiMn0` are approximations, and nothing between the anchors is

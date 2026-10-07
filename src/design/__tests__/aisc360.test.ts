@@ -4,6 +4,7 @@ import { checkTension } from '../aisc360/tension';
 import { checkCompression } from '../aisc360/compression';
 import { checkFlexure } from '../aisc360/flexure';
 import { checkCombined } from '../aisc360/combined';
+import { designSteelElement } from '../aisc360';
 
 /**
  * Validation tests for the AISC 360 checks.
@@ -202,5 +203,13 @@ describe('AISC 360 Chapter H — combined forces', () => {
 
   it('returns zero when nothing is applied', () => {
     expect(checkCombined(0, 0, 0)).toBe(0);
+  });
+});
+
+describe('AISC 360 — element result', () => {
+  it('is a code check, never flagged as indicative', () => {
+    // Only the ACI 318 column screening check carries the indicative flag.
+    expect(designSteelElement('S1', 50, 1200, A992, W12x26, 144).indicative).toBeUndefined();
+    expect(designSteelElement('S2', -50, 1200, A992, W12x26, 144).indicative).toBeUndefined();
   });
 });
