@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { useModelStore } from './model-store';
 import type { AnimationMode } from '../utils/animation';
 import type { HeatmapVariable, ColorScheme } from '../utils/color-ramp';
 import type { UnitSystem } from '../utils/units';
@@ -194,3 +195,17 @@ export const useUIStore = create<UIState>((set) => ({
 
 // Apply initial theme on load
 applyTheme(loadTheme());
+
+/**
+ * A selection only makes sense for the model it was made in. When the model is
+ * replaced (template, JSON or AI-generated model) or cleared, drop it so the
+ * editors do not keep showing, or later write back, values of an entity that is
+ * gone or that merely shares its id with one in the new model.
+ */
+useModelStore.subscribe((state, prev) => {
+  if (state.modelGeneration === prev.modelGeneration) return;
+  const { selectedNodeId, selectedElementId } = useUIStore.getState();
+  if (selectedNodeId !== null || selectedElementId !== null) {
+    useUIStore.setState({ selectedNodeId: null, selectedElementId: null });
+  }
+});

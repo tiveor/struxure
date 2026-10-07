@@ -20,6 +20,13 @@ interface ModelState {
   nodalLoads: NodalLoad[];
   distributedLoads: DistributedLoad[];
 
+  /**
+   * Bumped whenever the whole model is replaced or cleared, but not on edits
+   * or additive imports. Lets other stores drop state, such as the selection,
+   * that pointed at entities of the previous model even when ids are reused.
+   */
+  modelGeneration: number;
+
   // Node CRUD
   addNode: (node: StructuralNode) => void;
   updateNode: (id: string, updates: Partial<StructuralNode>) => void;
@@ -113,6 +120,7 @@ export const useModelStore = create<ModelState>((set, get) => ({
   supports: [],
   nodalLoads: [],
   distributedLoads: [],
+  modelGeneration: 0,
 
   addNode: (node) => set((s) => ({ nodes: [...s.nodes, node] })),
   updateNode: (id, updates) =>
@@ -196,7 +204,7 @@ export const useModelStore = create<ModelState>((set, get) => ({
   },
 
   loadModel: (model) =>
-    set({
+    set((s) => ({
       nodes: model.nodes,
       elements: model.elements,
       materials: model.materials,
@@ -204,7 +212,8 @@ export const useModelStore = create<ModelState>((set, get) => ({
       supports: model.supports,
       nodalLoads: model.nodalLoads,
       distributedLoads: model.distributedLoads,
-    }),
+      modelGeneration: s.modelGeneration + 1,
+    })),
 
   bulkImport: (nodes, elements) =>
     set((s) => ({
@@ -226,7 +235,7 @@ export const useModelStore = create<ModelState>((set, get) => ({
     }),
 
   clearModel: () =>
-    set({
+    set((s) => ({
       nodes: [],
       elements: [],
       materials: [defaultSteel, defaultConcrete],
@@ -234,7 +243,8 @@ export const useModelStore = create<ModelState>((set, get) => ({
       supports: [],
       nodalLoads: [],
       distributedLoads: [],
-    }),
+      modelGeneration: s.modelGeneration + 1,
+    })),
 }));
 
 /**
