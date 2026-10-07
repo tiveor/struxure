@@ -6,6 +6,8 @@
  * See NOTICE for the standards attribution and disclaimer.
  */
 
+import type { Section } from '../core/types';
+
 export interface AISCSection {
   name: string;
   type: 'W' | 'HSS';
@@ -169,29 +171,15 @@ export function filterSectionsByType(type: AISCSection['type']): AISCSection[] {
 }
 
 /**
- * Convert an AISCSection to the app's Section type format.
+ * Convert an AISCSection to the app's Section type format. W-shapes become
+ * shape 'I'. HSS also get b (width) and h (depth) so the 3D view draws the
+ * tube instead of falling back to a circle; their wall thickness is tw.
  */
-export function aiscToSection(aisc: AISCSection): {
-  id: string;
-  name: string;
-  A: number;
-  Ix: number;
-  Iy: number;
-  J: number;
-  Sx: number;
-  Sy: number;
-  Zx: number;
-  Zy: number;
-  rx: number;
-  ry: number;
-  d: number;
-  bf: number;
-  tf: number;
-  tw: number;
-} {
-  return {
+export function aiscToSection(aisc: AISCSection): Section {
+  const section: Section = {
     id: aisc.name,
     name: aisc.name,
+    shape: aisc.type === 'W' ? 'I' : 'HSS',
     A: aisc.A,
     Ix: aisc.Ix,
     Iy: aisc.Iy,
@@ -207,4 +195,9 @@ export function aiscToSection(aisc: AISCSection): {
     tf: aisc.tf,
     tw: aisc.tw,
   };
+  if (aisc.type === 'HSS') {
+    section.b = aisc.bf;
+    section.h = aisc.d;
+  }
+  return section;
 }

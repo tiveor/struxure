@@ -132,7 +132,7 @@ export function ifcProfileToSection(profile: IfcProfileData, unit: string, index
       return fallbackSection(baseName);
     }
     const props = calculateIShapeProperties(d, bf, tf, tw);
-    return { id: baseName, name: baseName, d, bf, tf, tw, ...props };
+    return { id: baseName, name: baseName, shape: 'I', d, bf, tf, tw, ...props };
   }
 
   if (profileType.includes('RECTANGLEHOLLOW')) {
@@ -143,7 +143,7 @@ export function ifcProfileToSection(profile: IfcProfileData, unit: string, index
       return fallbackSection(baseName);
     }
     const props = calculateHSSProperties(B, H, t);
-    return { id: baseName, name: baseName, d: H, bf: B, ...props };
+    return { id: baseName, name: baseName, shape: 'HSS', d: H, bf: B, b: B, h: H, tw: t, ...props };
   }
 
   if (profileType.includes('CIRCLEHOLLOW')) {
@@ -154,7 +154,7 @@ export function ifcProfileToSection(profile: IfcProfileData, unit: string, index
     }
     const D = 2 * R;
     const props = calculatePipeProperties(D, t);
-    return { id: baseName, name: baseName, d: D, bf: D, ...props };
+    return { id: baseName, name: baseName, shape: 'pipe', d: D, bf: D, tw: t, ...props };
   }
 
   if (profileType.includes('RECTANGLE') && !profileType.includes('HOLLOW')) {
@@ -173,7 +173,7 @@ export function ifcProfileToSection(profile: IfcProfileData, unit: string, index
     const rx = Math.sqrt(Ix / A);
     const ry = Math.sqrt(Iy / A);
     const J = B * H * (B ** 2 + H ** 2) / 12; // approximate
-    return { id: baseName, name: baseName, A, Ix, Iy, J, Sx, Sy, Zx, Zy, rx, ry, d: H, bf: B, b: B, h: H };
+    return { id: baseName, name: baseName, shape: 'rect', A, Ix, Iy, J, Sx, Sy, Zx, Zy, rx, ry, d: H, bf: B, b: B, h: H };
   }
 
   // Unknown profile type → fallback

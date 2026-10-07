@@ -36,7 +36,7 @@ const fullModel: StructuralModel = {
   ],
   sections: [
     {
-      id: 'S1', name: 'S', A: 1, Ix: 2, Iy: 3, J: 4, Sx: 5, Sy: 6, Zx: 7, Zy: 8, rx: 9, ry: 10,
+      id: 'S1', name: 'S', shape: 'I', A: 1, Ix: 2, Iy: 3, J: 4, Sx: 5, Sy: 6, Zx: 7, Zy: 8, rx: 9, ry: 10,
       d: 11, bf: 12, tf: 13, tw: 14, b: 15, h: 16,
       reinforcement: {
         cover: 1.5, barSize: 8, barsAlongB: 3, barsAlongH: 4, tieSize: 3, fy: 60,

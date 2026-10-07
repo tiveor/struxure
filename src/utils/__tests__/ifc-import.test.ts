@@ -217,6 +217,7 @@ describe('ifcProfileToSection', () => {
     expect(section.d).toBeCloseTo(300 / 25.4, 0);
     expect(section.A).toBeGreaterThan(0);
     expect(section.Ix).toBeGreaterThan(section.Iy!);
+    expect(section.shape).toBe('I');
   });
 
   it('should convert IfcRectangleHollowProfileDef', () => {
@@ -230,6 +231,10 @@ describe('ifcProfileToSection', () => {
 
     expect(section.A).toBeGreaterThan(0);
     expect(section.Ix).toBeCloseTo(section.Iy!, 0); // Square
+    expect(section.shape).toBe('HSS');
+    expect(section.b).toBeCloseTo(200 / 25.4, 10);
+    expect(section.h).toBeCloseTo(200 / 25.4, 10);
+    expect(section.tw).toBeCloseTo(10 / 25.4, 10);
   });
 
   it('should convert IfcCircleHollowProfileDef', () => {
@@ -242,6 +247,7 @@ describe('ifcProfileToSection', () => {
 
     expect(section.A).toBeGreaterThan(0);
     expect(section.Ix).toBeCloseTo(section.Iy!, 2); // Circular
+    expect(section.shape).toBe('pipe');
   });
 
   it('should convert IfcRectangleProfileDef (solid)', () => {
@@ -255,6 +261,7 @@ describe('ifcProfileToSection', () => {
     expect(section.A).toBeGreaterThan(0);
     expect(section.b).toBeCloseTo(300 / 25.4, 0);
     expect(section.h).toBeCloseTo(500 / 25.4, 0);
+    expect(section.shape).toBe('rect');
   });
 
   it('should return fallback section for unknown profile type', () => {
@@ -264,6 +271,7 @@ describe('ifcProfileToSection', () => {
 
     expect(section.A).toBe(10);
     expect(section.Ix).toBe(100);
+    expect(section).not.toHaveProperty('shape');
   });
 
   it('should return fallback for zero dimensions', () => {

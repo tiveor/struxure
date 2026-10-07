@@ -1,4 +1,5 @@
 import type { StructuralModel } from '../core/types';
+import { SECTION_SHAPES } from '../core/types';
 import { reinforcementErrors } from '../design/aci318/rebar';
 import {
   INTERNAL_UNIT_TAG,
@@ -256,6 +257,26 @@ function checkSteelYield(parsed: Record<string, unknown>): string[] {
 }
 
 /**
+ * Check the optional `shape` of each section. Absent is valid (older files);
+ * present must be one of the known families. Runs on both paths, like the
+ * reinforcement check.
+ */
+function checkSectionShape(parsed: Record<string, unknown>): string[] {
+  const errors: string[] = [];
+  const sections = parsed.sections;
+  if (!Array.isArray(sections)) return errors;
+  const allowed = SECTION_SHAPES.map((s) => `"${s}"`).join(', ');
+  sections.forEach((s, i) => {
+    if (!isRecord(s) || s.shape === undefined) return;
+    if (!(SECTION_SHAPES as readonly unknown[]).includes(s.shape)) {
+      const tag = isNonEmptyString(s.id) ? `"${s.id}"` : `#${i + 1}`;
+      errors.push(`Section ${tag}: "shape" must be one of ${allowed}`);
+    }
+  });
+  return errors;
+}
+
+/**
  * Usual ranges in ksi, wide enough for every grade the libraries carry. A
  * value outside them usually means the file was written in other units
  * than its tag says (steel E = 200000 under kip-in-ksi is MPa).
@@ -352,6 +373,7 @@ export function validateModelShape(
   errors.push(
     ...checkSteelYield(internal),
     ...checkSectionReinforcement(internal),
+    ...checkSectionShape(internal),
     ...checkReferences(model),
     ...checkSanity(model),
   );
@@ -385,7 +407,12 @@ export function validateModelJson(text: string): ValidationResult {
   }
 
   const tag = readUnitTag(parsed);
-  const errors = [...tag.errors, ...checkRequiredArrays(parsed), ...checkFieldTypes(parsed)];
+  const errors = [
+    ...tag.errors,
+    ...checkRequiredArrays(parsed),
+    ...checkFieldTypes(parsed),
+    ...checkSectionShape(parsed),
+  ];
   if (errors.length > 0) {
     return { success: false, errors };
   }
