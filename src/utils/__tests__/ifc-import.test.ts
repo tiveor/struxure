@@ -368,6 +368,75 @@ describe('exportResultsToIfc', () => {
     expect(text).not.toContain('IFCSTRUCTURALPOINTREACTION');
   });
 
+  it('should export reaction forces in N and moments in N-mm', async () => {
+    const results = createTestResults();
+    // kip and kip-in, all six components non-zero
+    results.reactions.set('n1', [1, 2, -3, 10, -20, 500]);
+    const buffer = await exportResultsToIfc(createTestModel(), results);
+    const text = new TextDecoder().decode(buffer);
+
+    const line = text.split('\n').find((l) => l.includes("IFCSTRUCTURALLOADSINGLEFORCE('Reaction n1'"));
+    expect(line).toBeDefined();
+    const values = line!
+      .replace(/^.*IFCSTRUCTURALLOADSINGLEFORCE\('Reaction n1',/, '')
+      .replace(/\);$/, '')
+      .split(',')
+      .map(Number);
+    expect(values).toHaveLength(6);
+
+    const KIP_TO_N = 4448.2216152605;
+    const KIP_IN_TO_N_MM = KIP_TO_N * 25.4; // 112984.829...
+    expect(values[0]).toBeCloseTo(1 * KIP_TO_N, 1);
+    expect(values[1]).toBeCloseTo(2 * KIP_TO_N, 1);
+    expect(values[2]).toBeCloseTo(-3 * KIP_TO_N, 1);
+    expect(values[3]).toBeCloseTo(10 * KIP_IN_TO_N_MM, 0); // 1129848.29 N-mm
+    expect(values[4]).toBeCloseTo(-20 * KIP_IN_TO_N_MM, 0);
+    expect(values[5]).toBeCloseTo(500 * KIP_IN_TO_N_MM, 0); // 56492414.6 N-mm
+  });
+
+  it('should declare mm, N and N-mm units matching the written values', async () => {
+    const buffer = await exportResultsToIfc(createTestModel(), createTestResults());
+    const text = new TextDecoder().decode(buffer);
+    const entity = (pattern: RegExp) => {
+      const m = text.match(pattern);
+      expect(m).not.toBeNull();
+      return m![1];
+    };
+
+    const lengthId = entity(/#(\d+)=IFCSIUNIT\(\*,\.LENGTHUNIT\.,\.MILLI\.,\.METRE\.\);/);
+    const forceId = entity(/#(\d+)=IFCSIUNIT\(\*,\.FORCEUNIT\.,\$,\.NEWTON\.\);/);
+    const forceElemId = entity(new RegExp(`#(\\d+)=IFCDERIVEDUNITELEMENT\\(#${forceId},1\\);`));
+    const lengthElemId = entity(new RegExp(`#(\\d+)=IFCDERIVEDUNITELEMENT\\(#${lengthId},1\\);`));
+    const torqueId = entity(
+      new RegExp(`#(\\d+)=IFCDERIVEDUNIT\\(\\(#${forceElemId},#${lengthElemId}\\),\\.TORQUEUNIT\\.,\\$\\);`),
+    );
+    const assignment = entity(/=IFCUNITASSIGNMENT\(\(([^)]*)\)\);/).split(',');
+    expect(assignment).toEqual(expect.arrayContaining([`#${lengthId}`, `#${forceId}`, `#${torqueId}`]));
+  });
+
+  it('should produce a file web-ifc reads back with a N-mm torque unit', async () => {
+    const WebIFC = await import('web-ifc');
+    const api = new WebIFC.IfcAPI();
+    await api.Init();
+    const modelID = api.OpenModel(await exportResultsToIfc(createTestModel(), createTestResults()));
+    try {
+      const ids = api.GetLineIDsWithType(modelID, WebIFC.IFCUNITASSIGNMENT);
+      expect(ids.size()).toBe(1);
+      const assignment = api.GetLine(modelID, ids.get(0), true);
+      const torque = assignment.Units.find(
+        (u: { UnitType?: { value?: string } }) => u?.UnitType?.value === 'TORQUEUNIT',
+      );
+      expect(torque).toBeDefined();
+      const parts = torque.Elements.map(
+        (e: { Unit: { Prefix?: { value?: string } | null; Name: { value: string } }; Exponent: { value: number } }) =>
+          `${e.Unit.Prefix?.value ?? ''}${e.Unit.Name.value}^${e.Exponent.value}`,
+      );
+      expect(parts.sort()).toEqual(['MILLIMETRE^1', 'NEWTON^1']);
+    } finally {
+      api.CloseModel(modelID);
+    }
+  });
+
   it('should convert coordinates to millimeters', async () => {
     const model = createTestModel();
     // Node n2 is at x=240 inches = 6096 mm

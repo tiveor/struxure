@@ -5,6 +5,11 @@
  */
 import type { StructuralModel, AnalysisResults } from '../core/types';
 
+/** 1 kip in newtons. */
+const KIP_TO_N = 4448.2216152605;
+/** 1 kip-in in newton-millimetres (kip -> N times in -> mm). */
+const KIP_IN_TO_N_MM = KIP_TO_N * 25.4;
+
 // ─── IFC step file text builder ──────────────────────────────────────
 // Since web-ifc's CreateModel/WriteLine API operates at a very low level,
 // we build the IFC-SPF text directly — this is the most reliable approach
@@ -102,15 +107,26 @@ export async function exportResultsToIfc(
   const contextId = id();
   lines.push(`#${contextId}=IFCGEOMETRICREPRESENTATIONCONTEXT($,'Model',3,1.E-5,#${axisPlacementId},$);`);
 
-  // Unit assignment (inches)
+  // Unit assignment: lengths in mm, forces in N, moments (IfcTorqueMeasure) in N-mm.
+  // Every value written below is converted from Struxure's in / kip / kip-in to these units.
   const lengthUnitId = id();
   lines.push(`#${lengthUnitId}=IFCSIUNIT(*,.LENGTHUNIT.,.MILLI.,.METRE.);`);
 
   const forceUnitId = id();
   lines.push(`#${forceUnitId}=IFCSIUNIT(*,.FORCEUNIT.,$,.NEWTON.);`);
 
+  // IFC4 has no SI torque unit, and the implicit default would be N-m, so declare N-mm explicitly.
+  const torqueForceElemId = id();
+  lines.push(`#${torqueForceElemId}=IFCDERIVEDUNITELEMENT(#${forceUnitId},1);`);
+
+  const torqueLengthElemId = id();
+  lines.push(`#${torqueLengthElemId}=IFCDERIVEDUNITELEMENT(#${lengthUnitId},1);`);
+
+  const torqueUnitId = id();
+  lines.push(`#${torqueUnitId}=IFCDERIVEDUNIT((#${torqueForceElemId},#${torqueLengthElemId}),.TORQUEUNIT.,$);`);
+
   const unitAssignId = id();
-  lines.push(`#${unitAssignId}=IFCUNITASSIGNMENT((#${lengthUnitId},#${forceUnitId}));`);
+  lines.push(`#${unitAssignId}=IFCUNITASSIGNMENT((#${lengthUnitId},#${forceUnitId},#${torqueUnitId}));`);
 
   // Project
   const projectId = id();
@@ -242,11 +258,19 @@ export async function exportResultsToIfc(
       const connId = nodeIdMap.get(nodeId);
       if (!connId) continue;
 
-      // Convert forces from kip to N (1 kip = 4448.22 N)
-      const fN = reaction.map((v) => v * 4448.22);
+      // Forces kip -> N, moments kip-in -> N-mm, matching the declared units.
+      const [fx, fy, fz, mx, my, mz] = reaction;
+      const out = [
+        fx * KIP_TO_N,
+        fy * KIP_TO_N,
+        fz * KIP_TO_N,
+        mx * KIP_IN_TO_N_MM,
+        my * KIP_IN_TO_N_MM,
+        mz * KIP_IN_TO_N_MM,
+      ].map((v) => v.toFixed(2));
 
       const loadId = id();
-      lines.push(`#${loadId}=IFCSTRUCTURALLOADSINGLEFORCE('${escapeStep(`Reaction ${nodeId}`)}',${fN[0].toFixed(2)},${fN[1].toFixed(2)},${fN[2].toFixed(2)},${fN[3].toFixed(2)},${fN[4].toFixed(2)},${fN[5].toFixed(2)});`);
+      lines.push(`#${loadId}=IFCSTRUCTURALLOADSINGLEFORCE('${escapeStep(`Reaction ${nodeId}`)}',${out.join(',')});`);
 
       const reactionId = id();
       lines.push(`#${reactionId}=IFCSTRUCTURALPOINTREACTION('${generateGuid()}',#${ownerHistoryId},'${escapeStep(`Reaction ${nodeId}`)}',$,$,$,$,#${loadId},.GLOBAL_COORDS.,$);`);
