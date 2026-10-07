@@ -58,7 +58,9 @@ export function buildResultsCSV(results: AnalysisResults, model: StructuralModel
   }
 
   lines.push('');
-  lines.push('--- Element Forces (Start) ---');
+  // Raw end forces at node I in local axes (force the node exerts on the element),
+  // the same convention as the report's start-force table: compression gives Axial > 0.
+  lines.push('--- Element End Forces at Node I (local axes; Axial > 0 is compression) ---');
   lines.push(['Element', col('Axial', 'force'), col('ShearY', 'force'), col('ShearZ', 'force'), col('Torsion', 'moment'), col('MomentY', 'moment'), col('MomentZ', 'moment')].join(','));
   for (const elem of model.elements) {
     const f = results.elementForces.get(elem.id);
