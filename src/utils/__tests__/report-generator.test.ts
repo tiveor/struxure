@@ -354,6 +354,9 @@ describe('report tables in display units', () => {
 });
 
 describe('generateReport units', () => {
+  // PDF string literals escape backslashes and parentheses with a backslash.
+  const pdfEscape = (s: string) => s.replace(/[\\()]/g, '\\$&');
+
   // jsPDF writes the page size as the MediaBox in points, at full float precision.
   const LETTER = '/MediaBox [0 0 612. 792.]';
   const A4 = '/MediaBox [0 0 595.279';
@@ -362,7 +365,7 @@ describe('generateReport units', () => {
     const text = await (await generateReport(createTestModel(), createTestResults(), [])).text();
     expect(text).toContain(LETTER);
     expect(text).toContain(reportUnitsLine('imperial'));
-    expect(text).toContain(reportCodesLine('imperial').replace(/[()]/g, '\\$&'));
+    expect(text).toContain(pdfEscape(reportCodesLine('imperial')));
     expect(text).toContain('X \\(in\\)');
   });
 
@@ -373,8 +376,8 @@ describe('generateReport units', () => {
     expect(text).not.toContain(LETTER);
     expect(text).toContain('X \\(m\\)');
     expect(text).toContain('Mrz \\(kN-m\\)');
-    expect(text).toContain(reportUnitsLine('metric').replace(/[()]/g, '\\$&'));
-    expect(text).toContain(reportCodesLine('metric').replace(/[()]/g, '\\$&'));
+    expect(text).toContain(pdfEscape(reportUnitsLine('metric')));
+    expect(text).toContain(pdfEscape(reportCodesLine('metric')));
     expect(text).not.toContain('\\(kip\\)');
   });
 
