@@ -1,4 +1,6 @@
 import type { StructuralModel, AnalysisResults } from '../core/types';
+import { unitLabel, systemLabel, toDisplay } from './units';
+import type { QuantityType, UnitSystem } from './units';
 
 /**
  * Serialize a model for a saved `.json` file. Every field is written as is,
@@ -21,37 +23,60 @@ export function exportModelJSON(model: StructuralModel, modelName?: string): voi
   URL.revokeObjectURL(url);
 }
 
-export function exportResultsCSV(results: AnalysisResults, model: StructuralModel, modelName?: string): void {
+/** Indices of the six DOF components: 0-2 are translations or forces, 3-5 rotations or moments. */
+const DOF_COMPONENTS = [0, 1, 2, 3, 4, 5];
+
+/**
+ * Builds the results CSV in display units, with the unit in every column
+ * header. Rotations stay in radians in both systems.
+ */
+export function buildResultsCSV(results: AnalysisResults, model: StructuralModel, units: UnitSystem = 'imperial'): string {
+  const u = (qty: QuantityType) => unitLabel(qty, units, { ascii: true });
+  const col = (name: string, qty: QuantityType) => `${name} (${u(qty)})`;
+  const forceOrMoment = (i: number): QuantityType => (i < 3 ? 'force' : 'moment');
   const lines: string[] = [];
+
+  lines.push(`--- Units: ${systemLabel(units)} ---`);
+  lines.push('');
 
   // Node displacements
   lines.push('--- Node Displacements ---');
-  lines.push('Node,ux,uy,uz,rx,ry,rz');
+  lines.push(['Node', col('ux', 'displacement'), col('uy', 'displacement'), col('uz', 'displacement'), 'rx (rad)', 'ry (rad)', 'rz (rad)'].join(','));
   for (const node of model.nodes) {
     const d = results.nodeDisplacements.get(node.id);
     if (d) {
-      lines.push(`${node.id},${d.map((v) => v.toExponential(6)).join(',')}`);
+      const values = DOF_COMPONENTS.map((i) => (i < 3 ? toDisplay(d[i], 'displacement', units) : d[i]));
+      lines.push(`${node.id},${values.map((v) => v.toExponential(6)).join(',')}`);
     }
   }
 
   lines.push('');
   lines.push('--- Reactions ---');
-  lines.push('Node,Rx,Ry,Rz,Mrx,Mry,Mrz');
+  lines.push(['Node', col('Rx', 'force'), col('Ry', 'force'), col('Rz', 'force'), col('Mrx', 'moment'), col('Mry', 'moment'), col('Mrz', 'moment')].join(','));
   for (const [nodeId, r] of results.reactions) {
-    lines.push(`${nodeId},${r.map((v) => v.toFixed(4)).join(',')}`);
+    lines.push(`${nodeId},${DOF_COMPONENTS.map((i) => toDisplay(r[i], forceOrMoment(i), units).toFixed(4)).join(',')}`);
   }
 
   lines.push('');
   lines.push('--- Element Forces (Start) ---');
-  lines.push('Element,Axial,ShearY,ShearZ,Torsion,MomentY,MomentZ');
+  lines.push(['Element', col('Axial', 'force'), col('ShearY', 'force'), col('ShearZ', 'force'), col('Torsion', 'moment'), col('MomentY', 'moment'), col('MomentZ', 'moment')].join(','));
   for (const elem of model.elements) {
     const f = results.elementForces.get(elem.id);
     if (f) {
-      lines.push(`${elem.id},${f.startForces.map((v) => v.toFixed(4)).join(',')}`);
+      lines.push(`${elem.id},${DOF_COMPONENTS.map((i) => toDisplay(f.startForces[i], forceOrMoment(i), units).toFixed(4)).join(',')}`);
     }
   }
 
-  const csv = lines.join('\n');
+  return lines.join('\n');
+}
+
+export function exportResultsCSV(
+  results: AnalysisResults,
+  model: StructuralModel,
+  modelName?: string,
+  units: UnitSystem = 'imperial',
+): void {
+  const csv = buildResultsCSV(results, model, units);
   const blob = new Blob([csv], { type: 'text/csv' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');

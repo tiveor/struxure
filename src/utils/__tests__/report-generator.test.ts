@@ -6,6 +6,18 @@ import {
   formatDCRatio,
   captureViewportScreenshot,
   designChecksTableBody,
+  nodeTable,
+  materialTable,
+  sectionTable,
+  nodalLoadTable,
+  distributedLoadTable,
+  displacementTable,
+  reactionTable,
+  elementForceHead,
+  elementForceRows,
+  reportUnit,
+  reportUnitsLine,
+  reportCodesLine,
 } from '../report-generator';
 import type { StructuralModel, AnalysisResults } from '../../core/types';
 import type { DesignCheckResult } from '../../design/types';
@@ -277,5 +289,99 @@ describe('design checks table, indicative results', () => {
     const beamsOnly = await generateReport(createTestModel(), createTestResults(), [beam]);
     expect(await withColumn.text()).toContain('Indicative: Assumed steel, screening only.');
     expect(await beamsOnly.text()).not.toContain('Indicative:');
+  });
+});
+
+// ─── Units ───────────────────────────────────────────────────────────
+
+describe('report tables in display units', () => {
+  const model = createTestModel();
+  const results = createTestResults();
+
+  it('keeps imperial tables as before', () => {
+    const nodes = nodeTable(model, 'imperial');
+    expect(nodes.head[0]).toEqual(['Node ID', 'X (in)', 'Y (in)', 'Z (in)']);
+    expect(nodes.body[1]).toEqual(['n2', '240.00', '0.00', '0.00']);
+    expect(sectionTable(model, 'imperial').body[0]).toEqual(['W12x26', '7.65', '204.0', '17.3', '0.300', '33.4', '37.2']);
+  });
+
+  it('converts geometry to m and section properties to mm', () => {
+    const nodes = nodeTable(model, 'metric');
+    expect(nodes.head[0]).toEqual(['Node ID', 'X (m)', 'Y (m)', 'Z (m)']);
+    expect(nodes.body[1]).toEqual(['n2', '6.096', '0.000', '0.000']);
+
+    const sections = sectionTable(model, 'metric');
+    expect(sections.head[0]).toEqual(['Section', 'A (mm²)', 'Ix (mm^4)', 'Iy (mm^4)', 'J (mm^4)', 'Sx (mm³)', 'Zx (mm³)']);
+    expect(sections.body[0]).toEqual(['W12x26', '4935', '84.91e6', '7.201e6', '124869', '547328', '609599']);
+  });
+
+  it('converts materials to MPa', () => {
+    const materials = materialTable(model, 'metric');
+    expect(materials.head[0]).toEqual(['Name', 'Type', 'E (MPa)', 'G (MPa)', 'fy/fc (MPa)']);
+    expect(materials.body[0]).toEqual(['A992 Steel', 'steel', '199948', '77221', '344.7']);
+  });
+
+  it('converts loads to kN, kN-m and kN/m', () => {
+    const loaded = createTestModel();
+    loaded.nodalLoads = [{ id: 'l1', nodeId: 'n4', fx: 5, fy: 0, fz: 0, mx: 0, my: 0, mz: 120 }];
+    const nodal = nodalLoadTable(loaded, 'metric');
+    expect(nodal.head[0]).toEqual(['Load ID', 'Node', 'Fx (kN)', 'Fy (kN)', 'Fz (kN)', 'Mx (kN-m)', 'My (kN-m)', 'Mz (kN-m)']);
+    expect(nodal.body[0]).toEqual(['l1', 'n4', '22.24', '0.00', '0.00', '0.00', '0.00', '13.56']);
+
+    const distributed = distributedLoadTable(model, 'metric');
+    expect(distributed.head[0]).toEqual(['Load ID', 'Element', 'wx (kN/m)', 'wy (kN/m)', 'wz (kN/m)']);
+    expect(distributed.body[0]).toEqual(['dl1', 'e2', '0.00', '-17.51', '0.00']);
+  });
+
+  it('converts results and leaves rotations in radians', () => {
+    const disp = displacementTable(model, results, 'metric');
+    expect(disp.head[0]).toEqual(['Node', 'ux (mm)', 'uy (mm)', 'uz (mm)', 'rx (rad)', 'ry (rad)', 'rz (rad)']);
+    expect(disp.body[2]).toEqual(['n3', '1.270', '0.508', '0.000', '0.0000', '0.0000', '-0.0010']);
+
+    const reactions = reactionTable(model, results, 'metric');
+    expect(reactions.head[0]).toEqual(['Node', 'Rx (kN)', 'Ry (kN)', 'Rz (kN)', 'Mrx (kN-m)', 'Mry (kN-m)', 'Mrz (kN-m)']);
+    expect(reactions.body[0]).toEqual(['n1', '11.12', '53.38', '0.00', '0.00', '0.00', '-56.49']);
+
+    expect(elementForceHead('metric')[0]).toEqual(['Element', 'Axial (kN)', 'V2 (kN)', 'V3 (kN)', 'T (kN-m)', 'M2 (kN-m)', 'M3 (kN-m)']);
+    expect(elementForceRows([-12, 2.5, 0, 0, 0, -500], 'metric')).toEqual(['-53.38', '11.12', '0.00', '0.00', '0.00', '-56.49']);
+    expect(elementForceRows([-12, 2.5, 0, 0, 0, -500], 'imperial')).toEqual(['-12.00', '2.50', '0.00', '0.00', '0.00', '-500.00']);
+  });
+
+  it('avoids the superscript 4, which the PDF fonts cannot draw', () => {
+    expect(reportUnit('momentOfInertia', 'imperial')).toBe('in^4');
+    expect(reportUnit('area', 'imperial')).toBe('in²');
+  });
+});
+
+describe('generateReport units', () => {
+  // jsPDF writes the page size as the MediaBox in points, at full float precision.
+  const LETTER = '/MediaBox [0 0 612. 792.]';
+  const A4 = '/MediaBox [0 0 595.279';
+
+  it('uses US Letter and an imperial units line by default', async () => {
+    const text = await (await generateReport(createTestModel(), createTestResults(), [])).text();
+    expect(text).toContain(LETTER);
+    expect(text).toContain(reportUnitsLine('imperial'));
+    expect(text).toContain(reportCodesLine('imperial').replace(/[()]/g, '\\$&'));
+    expect(text).toContain('X \\(in\\)');
+  });
+
+  it('uses A4, SI headers and states the codes for metric', async () => {
+    const blob = await generateReport(createTestModel(), createTestResults(), [], { units: 'metric' });
+    const text = await blob.text();
+    expect(text).toContain(A4);
+    expect(text).not.toContain(LETTER);
+    expect(text).toContain('X \\(m\\)');
+    expect(text).toContain('Mrz \\(kN-m\\)');
+    expect(text).toContain(reportUnitsLine('metric').replace(/[()]/g, '\\$&'));
+    expect(text).toContain(reportCodesLine('metric').replace(/[()]/g, '\\$&'));
+    expect(text).not.toContain('\\(kip\\)');
+  });
+
+  it('keeps the summary lines short enough not to be truncated', () => {
+    for (const units of ['imperial', 'metric'] as const) {
+      expect(reportUnitsLine(units).length).toBeLessThanOrEqual(70);
+      expect(reportCodesLine(units).length).toBeLessThanOrEqual(70);
+    }
   });
 });
