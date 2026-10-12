@@ -51,7 +51,7 @@
     "react-dom": "^19.3.0",
     "three": "^0.186.1",
     "web-ifc": "^0.0.75",
-    "zustand": "^5.0.11"
+    "zustand": "^5.0.15"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
