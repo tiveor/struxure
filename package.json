@@ -47,8 +47,8 @@
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.7",
     "ml-matrix": "^6.15.0",
-    "react": "^19.3.0",
-    "react-dom": "^19.3.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "three": "^0.186.1",
     "web-ifc": "^0.0.75",
     "zustand": "^5.0.15"
