@@ -50,7 +50,7 @@
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "three": "^0.186.1",
-    "web-ifc": "^0.0.75",
+    "web-ifc": "^0.0.78",
     "zustand": "^5.0.15"
   },
   "devDependencies": {
