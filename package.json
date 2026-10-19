@@ -75,9 +75,9 @@
     "postcss": "^8.5.29",
     "tailwindcss": "^4.1.18",
     "typescript": "~6.0.3",
-    "typescript-eslint": "^8.71.1",
+    "typescript-eslint": "^8.71.2",
     "vite": "^8.3.4",
     "vite-plugin-static-copy": "^3.2.0",
-    "vitest": "^5.0.3"
+    "vitest": "^5.0.5"
   }
 }
