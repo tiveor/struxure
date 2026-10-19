@@ -40,17 +40,17 @@
   },
   "dependencies": {
     "@react-three/drei": "^10.7.9",
-    "@react-three/fiber": "^9.8.1",
+    "@react-three/fiber": "^9.8.2",
     "d3": "^7.9.0",
     "dxf-parser": "^1.1.2",
     "idb": "^8.0.3",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.7",
     "ml-matrix": "^6.15.0",
-    "react": "^19.3.0",
-    "react-dom": "^19.3.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "three": "^0.186.1",
-    "web-ifc": "^0.0.75",
+    "web-ifc": "^0.0.78",
     "zustand": "^5.0.15"
   },
   "devDependencies": {
@@ -58,7 +58,7 @@
     "@tailwindcss/vite": "^4.3.3",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
-    "@testing-library/user-event": "^14.6.7",
+    "@testing-library/user-event": "^14.6.8",
     "@types/d3": "^7.4.3",
     "@types/node": "^26.6.4",
     "@types/react": "^19.3.0",
@@ -75,9 +75,9 @@
     "postcss": "^8.5.29",
     "tailwindcss": "^4.1.18",
     "typescript": "~6.0.3",
-    "typescript-eslint": "^8.71.1",
+    "typescript-eslint": "^8.71.2",
     "vite": "^8.3.4",
     "vite-plugin-static-copy": "^3.2.0",
-    "vitest": "^5.0.3"
+    "vitest": "^5.0.5"
   }
 }
