@@ -40,7 +40,7 @@
   },
   "dependencies": {
     "@react-three/drei": "^10.7.9",
-    "@react-three/fiber": "^9.8.1",
+    "@react-three/fiber": "^9.8.2",
     "d3": "^7.9.0",
     "dxf-parser": "^1.1.2",
     "idb": "^8.0.3",
