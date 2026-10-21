@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.4.1
+
+A maintenance release. No analysis or design results change, so models from
+v0.4.0 do not need to be re-run.
+
+### Changed
+
+- **The About dialog links to the repository and to Buy Me a Coffee (#81).**
+  The author link now points to alvarotech.dev, since the old /portfolio page
+  returned 404.
+- **Runtime dependencies are on their latest patch releases (#74, #80).**
+  React and React DOM 19.3.1, @react-three/fiber 9.8.2, web-ifc 0.0.78 and
+  zustand 5.0.15, plus the dev tooling.
+
 ## v0.4.0
 
 Validating every core module in isolation surfaced four defects that changed
