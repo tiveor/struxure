@@ -21,8 +21,8 @@ importers:
         specifier: ^1.1.2
         version: 1.1.2
       idb:
-        specifier: ^8.0.3
-        version: 8.0.3
+        specifier: ^8.0.4
+        version: 8.0.4
       jspdf:
         specifier: ^4.2.1
         version: 4.2.1
@@ -1736,8 +1736,8 @@ packages:
     resolution: {integrity: sha512-4fCk79wshMdzMp2rH06qWrJE4iolqLhCUH+OiuIgU++RB0+94NlDL81atO7GX55uUKueo0txHNtvEyI6D7WdMw==}
     engines: {node: '>=0.10.0'}
 
-  idb@8.0.3:
-    resolution: {integrity: sha512-LtwtVyVYO5BqRvcsKuB2iUMnHwPVByPCXFXOpuU96IZPPoPN6xjOGxZQ74pgSVVLQWtUOYgyeL4GE98BY5D3wg==}
+  idb@8.0.4:
+    resolution: {integrity: sha512-jd0ITCrN+Zah4J7R/Z2jnR3W7A4BXDAjmo62MwWuSjxCiueUAf7X5rbodEdidWzeknwXHmLpdZkoiiCppNi30Q==}
 
   ieee754@1.2.1:
     resolution: {integrity: sha512-dcyqhDvX1C46lXZcVqCpK+FtMRQVdIMN6/Df5js2zouUsqG7I6sFxitIC+7KYK29KdXOLHdu9zL4sFnoVQnqaA==}
@@ -4539,7 +4539,7 @@ snapshots:
     dependencies:
       safer-buffer: 2.1.2
 
-  idb@8.0.3: {}
+  idb@8.0.4: {}
 
   ieee754@1.2.1: {}
 
