@@ -4,3 +4,18 @@
 allowBuilds:
   core-js: true  # transitive dep of jspdf via canvg; postinstall is a funding-message no-op
   esbuild: true  # transitive dep of vite; postinstall downloads the platform native binary
+
+# Security pins for vulnerable transitive deps (pnpm 11 ignores `pnpm.overrides`
+# in package.json, so they must live here). Each selector targets only the
+# vulnerable range. Drop a pin once `pnpm audit` stays clean without it.
+overrides:
+  dompurify@<3.4.17: ^3.4.17  # via jspdf, shipped to users (PDF export)
+  minimatch@<3.1.4: ^3.1.4
+  brace-expansion@<1.1.21: ^1.1.21
+  picomatch@<2.3.2: ^2.3.2
+  undici@<8.12.2: ^8.12.2
+  browserslist@<4.28.7: ^4.28.7
+  zod@<4.6.6: ^4.6.6
+  baseline-browser-mapping@<2.11.0: ^2.11.0
+  '@babel/core@<7.29.1': ^7.29.1
+  esbuild@<0.28.1: ^0.28.1
