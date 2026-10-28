@@ -23,6 +23,8 @@ export default defineConfig(({ mode }) => {
         targets: [{
           src: 'node_modules/web-ifc/*.wasm',
           dest: '.',
+          // v4 preserves source dirs by default; web-ifc expects the wasm at the dist root
+          rename: { stripBase: true },
         }],
       }),
     ],
