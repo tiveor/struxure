@@ -38,4 +38,15 @@ describe('umamiPlugin', () => {
     expect(render('abc', 'https://analytics.example.test/s.js'))
       .toContain('src="https://analytics.example.test/s.js"');
   });
+
+  it('escapes the configured values so they cannot break out of the attribute', () => {
+    const out = render('x"><script>alert(1)</script>');
+    expect(out).not.toContain('<script>alert(1)');
+    expect(out).toContain('data-website-id="x&quot;&gt;&lt;script&gt;');
+  });
+
+  it('refuses a script source that is not https', () => {
+    expect(() => render('abc', 'http://analytics.example.test/s.js')).toThrow(/https/);
+    expect(() => render('abc', 'javascript:alert(1)')).toThrow(/https/);
+  });
 });

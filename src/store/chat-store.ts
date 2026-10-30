@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { endpointHost } from '../utils/endpoint-host';
 
 export type AiProvider = 'local' | 'online';
 export type AiTab = 'local' | 'online' | 'settings';
@@ -191,8 +192,14 @@ export const useChatStore = create<ChatState>((set) => ({
   updateSettings: (updates) =>
     set((s) => {
       const next = { ...s.settings, ...updates };
+      // A key belongs to one provider: moving the endpoint to another host
+      // (a preset click or a manual edit) must not send it there.
+      const hostChanged =
+        'onlineEndpoint' in updates &&
+        endpointHost(next.onlineEndpoint) !== endpointHost(s.settings.onlineEndpoint);
+      if (hostChanged && !('onlineApiKey' in updates)) next.onlineApiKey = '';
       writeSettings(next, s.apiKeyStorage);
-      if ('onlineApiKey' in updates) writeApiKey(s.apiKeyStorage, next.onlineApiKey);
+      if ('onlineApiKey' in updates || hostChanged) writeApiKey(s.apiKeyStorage, next.onlineApiKey);
       return { settings: next };
     }),
   apiKeyStorage: initial.apiKeyStorage,

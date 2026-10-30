@@ -210,3 +210,33 @@ describe('storage failures', () => {
     expect(store.getState().settings.localTemperature).toBe(0.3);
   });
 });
+
+describe('changing provider', () => {
+  const OPENROUTER = 'https://openrouter.ai/api/v1/chat/completions';
+  const OPENAI = 'https://api.openai.com/v1/chat/completions';
+
+  it('drops the key when the endpoint moves to another host, so it is never sent there', async () => {
+    const store = await loadStore();
+    store.getState().updateSettings({ onlineEndpoint: OPENROUTER, onlineApiKey: SECRET });
+    store.getState().updateSettings({ onlineEndpoint: OPENAI, onlineModel: 'gpt-4o' });
+
+    expect(store.getState().settings.onlineApiKey).toBe('');
+    expect(session.dump()).not.toContain(SECRET);
+  });
+
+  it('keeps the key when only the path changes on the same host', async () => {
+    const store = await loadStore();
+    store.getState().updateSettings({ onlineEndpoint: OPENROUTER, onlineApiKey: SECRET });
+    store.getState().updateSettings({ onlineEndpoint: 'https://openrouter.ai/api/v2/chat/completions' });
+
+    expect(store.getState().settings.onlineApiKey).toBe(SECRET);
+  });
+
+  it('keeps a key set in the same update as the new endpoint', async () => {
+    const store = await loadStore();
+    store.getState().updateSettings({ onlineEndpoint: OPENROUTER, onlineApiKey: SECRET });
+    store.getState().updateSettings({ onlineEndpoint: OPENAI, onlineApiKey: 'sk-openai' });
+
+    expect(store.getState().settings.onlineApiKey).toBe('sk-openai');
+  });
+});

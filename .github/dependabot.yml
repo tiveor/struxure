@@ -6,6 +6,10 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 5
+    # Wait a week before proposing a new version: compromised npm releases are
+    # usually caught and pulled within days. Security updates skip the wait.
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: chore
       include: scope
@@ -24,5 +28,7 @@ updates:
     directory: /
     schedule:
       interval: monthly
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: ci

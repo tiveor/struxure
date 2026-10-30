@@ -5,6 +5,7 @@
 import DxfParser from 'dxf-parser';
 import type { StructuralNode, FrameElement } from '../core/types';
 import type { UnitSystem } from './units';
+import { MAX_MODEL_ELEMENTS } from './import-limits';
 
 export type DxfUnit = 'inches' | 'feet' | 'mm' | 'cm' | 'm';
 
@@ -125,6 +126,18 @@ export function convertEntities(
     } else if (type === 'CIRCLE' || type === 'ARC' || type === 'ELLIPSE') {
       warnings.push(`Skipped unsupported entity: ${type}`);
     }
+  }
+
+  // The node merge below is quadratic, so a drawing far past any real model
+  // would freeze the tab: refuse it instead.
+  if (segments.length > MAX_MODEL_ELEMENTS) {
+    return {
+      nodes: [],
+      elements: [],
+      warnings: [`Drawing has ${segments.length} line segments; the limit is ${MAX_MODEL_ELEMENTS}`],
+      stats: { linesFound, nodesCreated: 0, elementsCreated: 0, duplicatesMerged: 0 },
+      layers: [...layerSet],
+    };
   }
 
   // Build unique nodes with tolerance merging
