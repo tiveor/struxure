@@ -19,3 +19,17 @@ overrides:
   baseline-browser-mapping@<2.11.0: ^2.11.0
   '@babel/core@<7.29.1': ^7.29.1
   esbuild@<0.28.1: ^0.28.1
+
+# Supply-chain defences. pnpm 11 already defaults to minimumReleaseAge: 1440,
+# blockExoticSubdeps and strictDepBuilds; they are spelled out here so a pnpm
+# downgrade or a default change cannot silently turn them off.
+minimumReleaseAge: 1440  # minutes; skip versions published in the last day
+blockExoticSubdeps: true  # no git or tarball URLs in transitive deps
+strictDepBuilds: true
+# Refuse a version published with weaker trust evidence (e.g. no provenance)
+# than an earlier one, the usual signature of a stolen npm token.
+trustPolicy: no-downgrade
+trustPolicyExclude:
+  # Official ReDoS backport (CVE-2022-25883), published by hand by an npm team
+  # member in July 2023, so it lacks the provenance that 7.x releases carry.
+  - semver@6.3.1
