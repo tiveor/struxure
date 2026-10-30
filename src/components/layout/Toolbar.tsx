@@ -12,6 +12,7 @@ import type { IfcImportResult } from '../../utils/ifc-import';
 import { TEMPLATES } from '../../utils/templates';
 import { validateModelJson } from '../../utils/model-validator';
 import { track } from '../../utils/analytics';
+import { fileSizeError } from '../../utils/import-limits';
 import { AboutDialog } from '../shared/AboutDialog';
 import { AnalysisProgress } from '../shared/AnalysisProgress';
 import { IfcImportDialog } from '../shared/IfcImportDialog';
@@ -101,6 +102,12 @@ export function Toolbar() {
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
+
+      const sizeError = fileSizeError(file);
+      if (sizeError) {
+        alert(sizeError);
+        return;
+      }
 
       if (file.name.toLowerCase().endsWith('.ifc')) {
         try {

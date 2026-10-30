@@ -21,7 +21,7 @@ const RESULT: DxfImportResult = {
 };
 
 async function dropDxf() {
-  const file = { name: 'frame.dxf', text: async () => 'DXF CONTENT' };
+  const file = { name: 'frame.dxf', size: 11, text: async () => 'DXF CONTENT' };
   fireEvent.drop(screen.getByTestId('drop-target').parentElement as HTMLElement, {
     dataTransfer: { files: [file], items: [] },
   });

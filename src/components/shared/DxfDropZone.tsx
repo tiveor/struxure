@@ -4,6 +4,7 @@ import { importIfc } from '../../utils/ifc-import';
 import { useModelStore } from '../../store/model-store';
 import { useUIStore } from '../../store/ui-store';
 import type { DxfImportResult, DxfUnit } from '../../utils/dxf-import';
+import { fileSizeError } from '../../utils/import-limits';
 import type { IfcImportResult } from '../../utils/ifc-import';
 import { IfcImportDialog } from './IfcImportDialog';
 
@@ -88,6 +89,12 @@ export function DxfDropZone({ children }: { children: React.ReactNode }) {
 
     const file = e.dataTransfer.files[0];
     if (!file) return;
+
+    const sizeError = fileSizeError(file);
+    if (sizeError) {
+      alert(sizeError);
+      return;
+    }
 
     const ext = file.name.toLowerCase();
     if (ext.endsWith('.dxf')) {

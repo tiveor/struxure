@@ -9,6 +9,7 @@ import {
   isModelUnitTag,
 } from './model-units';
 import type { ModelUnitTag } from './model-units';
+import { MAX_MODEL_ELEMENTS, MAX_MODEL_NODES } from './import-limits';
 
 export interface ValidationResult {
   success: boolean;
@@ -107,6 +108,18 @@ const ARRAY_FIELDS: Record<
  * Check that the required model arrays exist. `distributedLoads` is optional
  * and defaults to an empty array so callers always see a complete model.
  */
+function checkModelSize(parsed: Record<string, unknown>): string[] {
+  const errors: string[] = [];
+  const count = (key: string) => (Array.isArray(parsed[key]) ? (parsed[key] as unknown[]).length : 0);
+  if (count('nodes') > MAX_MODEL_NODES) {
+    errors.push(`Model has ${count('nodes')} nodes; the limit is ${MAX_MODEL_NODES}`);
+  }
+  if (count('elements') > MAX_MODEL_ELEMENTS) {
+    errors.push(`Model has ${count('elements')} elements; the limit is ${MAX_MODEL_ELEMENTS}`);
+  }
+  return errors;
+}
+
 function checkRequiredArrays(parsed: Record<string, unknown>): string[] {
   const errors: string[] = [];
   for (const key of REQUIRED_ARRAYS) {
@@ -404,6 +417,13 @@ export function validateModelJson(text: string): ValidationResult {
 
   if (!isRecord(parsed)) {
     return { success: false, errors: ['File does not contain a model object'] };
+  }
+
+  // Checked first: a hostile file with millions of entries would otherwise
+  // hang the tab in the per-field checks or when rendering.
+  const sizeErrors = checkModelSize(parsed);
+  if (sizeErrors.length > 0) {
+    return { success: false, errors: sizeErrors };
   }
 
   const tag = readUnitTag(parsed);
