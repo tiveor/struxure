@@ -19,6 +19,14 @@ self.addEventListener('fetch', (event) => {
   // Only handle GET requests — POST/etc can't be cached
   if (event.request.method !== 'GET') return;
 
+  // Only the app's own static assets are cached. Cross-origin calls (AI
+  // providers, analytics, a local LM Studio) and anything carrying credentials
+  // go straight to the network, so a key check never sees a stale 200 and no
+  // API reply is written to disk.
+  const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin) return;
+  if (event.request.headers.has('Authorization')) return;
+
   // Network-first for navigation, cache-first for assets
   if (event.request.mode === 'navigate') {
     event.respondWith(
