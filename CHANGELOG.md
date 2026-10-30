@@ -1,5 +1,33 @@
 # Changelog
 
+## v0.4.2
+
+A security release. No analysis or design results change, so models from
+v0.4.1 do not need to be re-run.
+
+### Security
+
+- **The service worker no longer caches API replies (#90).** It cached every
+  successful GET, including authenticated calls to AI providers, so their
+  replies were written to disk and a cached reply made Test Connection pass
+  with a revoked key. It now caches only the app's own assets.
+- **An API key is never sent to a provider it was not entered for (#90).**
+  Switching provider presets kept the previous key, so an OpenRouter key went
+  to OpenAI or Groq on the next request. Changing the endpoint host now clears
+  the key.
+- **Oversized files are refused (#90).** Files over 50 MB, and models with
+  more than 20,000 nodes or elements, no longer load. A crafted DXF could
+  freeze the tab for minutes.
+- **Model text is sent to the AI as data (#90).** Names inside a shared model
+  file are marked as data, not instructions, when the model goes to the AI
+  Assistant. Review AI-generated models before relying on them.
+- **Vulnerable dependencies are patched (#89).** `pnpm audit` reported 29
+  advisories, including a critical one in DOMPurify (used by the PDF export).
+  All are fixed and pinned.
+- **Hardened CI and supply chain (#90).** GitHub Actions are pinned to commit
+  SHAs, Dependabot waits 7 days before proposing a new release, and pnpm
+  refuses packages whose publishing trust drops between versions.
+
 ## v0.4.1
 
 A maintenance release. No analysis or design results change, so models from
