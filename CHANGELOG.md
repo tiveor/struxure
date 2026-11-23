@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.5.0
+
+A maintenance release. No analysis or design results change, so models from
+v0.4.2 do not need to be re-run.
+
+### Changed
+
+- **Tailwind CSS is on 4.3 (#96).** Up from 4.1.18, matching the
+  `@tailwindcss/vite` plugin that was already on 4.3.
+- **Runtime dependencies are on their latest patch releases (#96).**
+  ml-matrix 6.15.1 and zustand 5.0.16, plus jsdom 30.1.3 and @types/node
+  26.6.5 in the dev tooling.
+
 ## v0.4.2
 
 A security release. No analysis or design results change, so models from
